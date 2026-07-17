@@ -2,4 +2,5 @@
 
 Hardware management and MES for rapid development and iteration of complex hardware — starting with cryogenic propulsion and thermal management.
 
-See **[CONCEPT.md](./CONCEPT.md)** for the product concept freeze (wedge, identity model, effectivity, verification, risk classes, and v0 boundaries).
+- **[CONCEPT.md](./CONCEPT.md)** — product concept freeze
+- **[web/](./web)** — v0 Next.js app (configs, runs, verification, change impact)
