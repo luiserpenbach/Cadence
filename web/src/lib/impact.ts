@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import * as s from "../db/schema";
+import { compareSerials } from "./serial";
 
 export type BomPin = {
   partRevisionId: string;
@@ -153,18 +154,22 @@ export type ImpactReport = {
   staleTestHint: string;
 };
 
-export function buildImpactReport(fromConfigId: string, toConfigId: string): ImpactReport {
+export function buildImpactReport(
+  fromConfigId: string,
+  toConfigId: string,
+): ImpactReport | null {
   const db = getDb();
   const from = db
     .select()
     .from(s.configurations)
     .where(eq(s.configurations.id, fromConfigId))
-    .get()!;
+    .get();
   const to = db
     .select()
     .from(s.configurations)
     .where(eq(s.configurations.id, toConfigId))
-    .get()!;
+    .get();
+  if (!from || !to) return null;
 
   const bomDeltas = diffBom(fromConfigId, toConfigId);
   const testDiff = diffRequiredTests(fromConfigId, toConfigId);
@@ -188,24 +193,26 @@ export function buildImpactReport(fromConfigId: string, toConfigId: string): Imp
     }
   }
 
-  // Articles that have as-built against prior config pins (approx: all articles with as-built)
-  const articlesOnPrior = db
-    .select({
-      serial: s.articles.serial,
-      name: s.articles.name,
-    })
-    .from(s.articles)
-    .all()
-    .filter((a) => {
-      // simplistic: articles below serialFrom of `to` are on prior
-      const eff = db
-        .select()
-        .from(s.configEffectivity)
-        .where(eq(s.configEffectivity.configId, toConfigId))
-        .get();
-      if (!eff?.serialFrom) return false;
-      return a.serial < eff.serialFrom;
-    });
+  // Articles below every serial cut-in point of `to` stay on the prior config.
+  const toEffectivity = db
+    .select()
+    .from(s.configEffectivity)
+    .where(eq(s.configEffectivity.configId, toConfigId))
+    .all();
+  const cutIns = toEffectivity
+    .map((e) => e.serialFrom)
+    .filter((sf): sf is string => Boolean(sf));
+  const articlesOnPrior =
+    cutIns.length === 0
+      ? []
+      : db
+          .select({
+            serial: s.articles.serial,
+            name: s.articles.name,
+          })
+          .from(s.articles)
+          .all()
+          .filter((a) => cutIns.every((sf) => compareSerials(a.serial, sf) < 0));
 
   return {
     from,

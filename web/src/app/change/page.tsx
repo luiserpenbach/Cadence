@@ -13,15 +13,14 @@ export default function ChangePage() {
   const from = configs.find((c) => c.key === "CH4-FEED-N");
   const to = configs.find((c) => c.key === "CH4-FEED-N+1");
 
-  if (!from || !to) {
+  const impact = from && to ? buildImpactReport(from.id, to.id) : null;
+  if (!from || !to || !impact) {
     return (
       <AppShell title="Change impact" subtitle="Seed data missing.">
         <Panel>No baseline delta available.</Panel>
       </AppShell>
     );
   }
-
-  const impact = buildImpactReport(from.id, to.id);
 
   return (
     <AppShell

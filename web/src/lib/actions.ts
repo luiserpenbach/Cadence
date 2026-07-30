@@ -3,20 +3,53 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { getDb } from "../db";
 import * as s from "../db/schema";
 import { id } from "./id";
 import { ensureAppData } from "./bootstrap";
+import { releaseConfiguration } from "./domain/release";
+import { cutConfiguration } from "./domain/cut-config";
 
-export async function acknowledgeRunGaps(formData: FormData) {
+// Note: a "use server" module may only export async functions, so the
+// initial state lives with the client form components.
+export type ActionState = {
+  ok: boolean;
+  error: string;
+};
+
+function fail(error: string): ActionState {
+  return { ok: false, error };
+}
+
+const nonEmpty = z.string().trim().min(1);
+
+const ackSchema = z.object({
+  runId: nonEmpty,
+  by: nonEmpty,
+  reason: nonEmpty,
+});
+
+export async function acknowledgeRunGaps(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   ensureAppData();
-  const runId = String(formData.get("runId") || "");
-  const by = String(formData.get("by") || "designer");
-  const reason = String(formData.get("reason") || "");
-  if (!runId) return;
+  const parsed = ackSchema.safeParse({
+    runId: formData.get("runId"),
+    by: formData.get("by"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return fail("Name and reason are required to acknowledge gaps.");
+  }
+  const { runId, by, reason } = parsed.data;
 
-  getDb()
-    .update(s.runs)
+  const db = getDb();
+  const run = db.select().from(s.runs).where(eq(s.runs.id, runId)).get();
+  if (!run) return fail("Run not found.");
+
+  db.update(s.runs)
     .set({
       gapAcknowledged: true,
       gapAckBy: by,
@@ -28,19 +61,39 @@ export async function acknowledgeRunGaps(formData: FormData) {
 
   revalidatePath(`/runs/${runId}`);
   revalidatePath("/runs");
+  return { ok: true, error: "" };
 }
 
-export async function recordTestResult(formData: FormData) {
-  ensureAppData();
-  const runId = String(formData.get("runId") || "");
-  const testDefinitionId = String(formData.get("testDefinitionId") || "");
-  const status = String(formData.get("status") || "pass");
-  const value = String(formData.get("value") || "");
-  const by = String(formData.get("by") || "tech");
-  if (!runId || !testDefinitionId) return;
+const testResultSchema = z.object({
+  runId: nonEmpty,
+  testDefinitionId: nonEmpty,
+  status: z.enum(["pass", "fail", "waived"]),
+  value: z.string().trim(),
+  by: nonEmpty,
+});
 
-  getDb()
-    .insert(s.testResults)
+export async function recordTestResult(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = testResultSchema.safeParse({
+    runId: formData.get("runId"),
+    testDefinitionId: formData.get("testDefinitionId"),
+    status: formData.get("status"),
+    value: String(formData.get("value") ?? ""),
+    by: formData.get("by"),
+  });
+  if (!parsed.success) {
+    return fail("Test, a valid status (pass/fail/waived), and recorder are required.");
+  }
+  const { runId, testDefinitionId, status, value, by } = parsed.data;
+
+  const db = getDb();
+  const run = db.select().from(s.runs).where(eq(s.runs.id, runId)).get();
+  if (!run) return fail("Run not found.");
+
+  db.insert(s.testResults)
     .values({
       id: id("tres"),
       runId,
@@ -52,119 +105,62 @@ export async function recordTestResult(formData: FormData) {
     .run();
 
   revalidatePath(`/runs/${runId}`);
+  return { ok: true, error: "" };
 }
 
-export async function releaseConfig(formData: FormData) {
+const releaseSchema = z.object({
+  configId: nonEmpty,
+  by: nonEmpty,
+  reviewer: z.string().trim().optional(),
+});
+
+export async function releaseConfig(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   ensureAppData();
-  const configId = String(formData.get("configId") || "");
-  const by = String(formData.get("by") || "designer");
-  const reviewer = String(formData.get("reviewer") || "");
-  if (!configId) return;
+  const parsed = releaseSchema.safeParse({
+    configId: formData.get("configId"),
+    by: formData.get("by"),
+    reviewer: formData.get("reviewer") ?? undefined,
+  });
+  if (!parsed.success) {
+    return fail("Config and releaser are required.");
+  }
 
-  const db = getDb();
-  const config = db
-    .select()
-    .from(s.configurations)
-    .where(eq(s.configurations.id, configId))
-    .get();
-  if (!config) return;
+  const result = releaseConfiguration(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
 
-  const needsReviewer = config.riskClass === "R3";
-  db.update(s.configurations)
-    .set({
-      status: "released",
-      releasedAt: new Date().toISOString(),
-      releasedBy: by,
-      reviewerAckBy: needsReviewer ? reviewer || by : config.reviewerAckBy,
-      reviewerAckAt: needsReviewer
-        ? new Date().toISOString()
-        : config.reviewerAckAt,
-    })
-    .where(eq(s.configurations.id, configId))
-    .run();
-
-  revalidatePath(`/configs/${configId}`);
+  revalidatePath(`/configs/${parsed.data.configId}`);
   revalidatePath("/configs");
+  return { ok: true, error: "" };
 }
 
-export async function cutConfigFrom(formData: FormData) {
+const cutSchema = z.object({
+  basedOnId: nonEmpty,
+  key: nonEmpty,
+  name: nonEmpty,
+  riskClass: z.enum(s.riskClasses),
+});
+
+export async function cutConfigFrom(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   ensureAppData();
-  const basedOnId = String(formData.get("basedOnId") || "");
-  const key = String(formData.get("key") || "").trim();
-  const name = String(formData.get("name") || "").trim();
-  const riskClass = String(formData.get("riskClass") || "R2");
-  if (!basedOnId || !key || !name) return;
-
-  const db = getDb();
-  const base = db
-    .select()
-    .from(s.configurations)
-    .where(eq(s.configurations.id, basedOnId))
-    .get();
-  if (!base) return;
-
-  const newId = id("cfg");
-  db.insert(s.configurations)
-    .values({
-      id: newId,
-      key,
-      name,
-      kind: base.kind,
-      status: "draft",
-      riskClass,
-      basedOnConfigId: basedOnId,
-      notes: `Cut from ${base.key}`,
-    })
-    .run();
-
-  const bom = db
-    .select()
-    .from(s.configBomLines)
-    .where(eq(s.configBomLines.configId, basedOnId))
-    .all();
-  for (const line of bom) {
-    db.insert(s.configBomLines)
-      .values({
-        id: id("bom"),
-        configId: newId,
-        partRevisionId: line.partRevisionId,
-        qty: line.qty,
-        findNumber: line.findNumber,
-        notes: line.notes,
-      })
-      .run();
+  const parsed = cutSchema.safeParse({
+    basedOnId: formData.get("basedOnId"),
+    key: formData.get("key"),
+    name: formData.get("name"),
+    riskClass: formData.get("riskClass"),
+  });
+  if (!parsed.success) {
+    return fail("Base config, key, name, and a valid risk class are required.");
   }
 
-  const tests = db
-    .select()
-    .from(s.configRequiredTests)
-    .where(eq(s.configRequiredTests.configId, basedOnId))
-    .all();
-  for (const t of tests) {
-    db.insert(s.configRequiredTests)
-      .values({
-        id: id("crt"),
-        configId: newId,
-        testDefinitionId: t.testDefinitionId,
-      })
-      .run();
-  }
-
-  const procs = db
-    .select()
-    .from(s.configProcedures)
-    .where(eq(s.configProcedures.configId, basedOnId))
-    .all();
-  for (const p of procs) {
-    db.insert(s.configProcedures)
-      .values({
-        id: id("cpr"),
-        configId: newId,
-        procedureId: p.procedureId,
-      })
-      .run();
-  }
+  const result = cutConfiguration(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
 
   revalidatePath("/configs");
-  redirect(`/configs/${newId}`);
+  redirect(`/configs/${result.configId}`);
 }

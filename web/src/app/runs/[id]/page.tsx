@@ -6,7 +6,7 @@ import { ensureAppData } from "../../../lib/bootstrap";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { getRunVerification } from "../../../lib/queries";
-import { acknowledgeRunGaps, recordTestResult } from "../../../lib/actions";
+import { AckGapsForm, RecordTestForm } from "../../../components/forms";
 
 export const dynamic = "force-dynamic";
 
@@ -150,26 +150,7 @@ export default async function RunDetailPage({
               Acknowledged by {run.gapAckBy}: {run.gapAckReason}
             </p>
           ) : (
-            <form action={acknowledgeRunGaps} className="mt-4 space-y-2">
-              <input type="hidden" name="runId" value={run.id} />
-              <input
-                name="by"
-                defaultValue="m.chen"
-                className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-              />
-              <textarea
-                name="reason"
-                required
-                placeholder="Why proceed with gaps?"
-                className="min-h-20 w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-              />
-              <button
-                type="submit"
-                className="rounded-md bg-[var(--accent-hot)] px-4 py-2 text-sm text-white"
-              >
-                Acknowledge gaps &amp; proceed
-              </button>
-            </form>
+            <AckGapsForm runId={run.id} />
           )}
         </Panel>
 
@@ -180,44 +161,13 @@ export default async function RunDetailPage({
               No missing required tests.
             </p>
           ) : (
-            <form action={recordTestResult} className="mt-3 space-y-2">
-              <input type="hidden" name="runId" value={run.id} />
-              <select
-                name="testDefinitionId"
-                className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-              >
-                {missing.map((g) => (
-                  <option key={g.testDefinitionId} value={g.testDefinitionId}>
-                    {g.key}
-                  </option>
-                ))}
-              </select>
-              <select
-                name="status"
-                className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-                defaultValue="pass"
-              >
-                <option value="pass">pass</option>
-                <option value="fail">fail</option>
-                <option value="waived">waived</option>
-              </select>
-              <input
-                name="value"
-                placeholder="Measured value / notes"
-                className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-              />
-              <input
-                name="by"
-                defaultValue="tech.lee"
-                className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-              />
-              <button
-                type="submit"
-                className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
-              >
-                Save result
-              </button>
-            </form>
+            <RecordTestForm
+              runId={run.id}
+              missing={missing.map((g) => ({
+                testDefinitionId: g.testDefinitionId,
+                key: g.key,
+              }))}
+            />
           )}
         </Panel>
       </div>

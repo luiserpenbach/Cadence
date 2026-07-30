@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import * as s from "../db/schema";
 
@@ -63,17 +63,20 @@ export function getRunVerification(runId: string): VerificationReport {
     .map((t) => ({ ...t, source: "stand" as const }));
 
   const required = [...articleTests, ...standTests];
+  // Ordered ascending so the Map keeps the most recently recorded result per test.
   const results = db
     .select()
     .from(s.testResults)
     .where(eq(s.testResults.runId, runId))
+    .orderBy(asc(s.testResults.recordedAt))
     .all();
   const resultByTest = new Map(results.map((r) => [r.testDefinitionId, r]));
 
-  const waiverRows =
-    results.length > 0
-      ? db.select().from(s.waivers).where(eq(s.waivers.runId, runId)).all()
-      : [];
+  const waiverRows = db
+    .select()
+    .from(s.waivers)
+    .where(eq(s.waivers.runId, runId))
+    .all();
   const waived = new Set(waiverRows.map((w) => w.testDefinitionId));
 
   const gaps: VerificationGap[] = [];

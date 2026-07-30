@@ -166,7 +166,7 @@ pure-ish code that's cheap to unit test against an in-memory SQLite.
 Ordered so each phase leaves the app releasable. Phases 1–2 are prerequisites
 for everything after; 3–5 deliver the concept's "first win" loop end-to-end.
 
-### Phase 1 — Foundations & bug fixes (small)
+### Phase 1 — Foundations & bug fixes (small) ✅ done
 *Goal: trustworthy base; no behavior redesign.*
 
 1. Add `typecheck` script; add Vitest + in-memory SQLite test factory; add CI

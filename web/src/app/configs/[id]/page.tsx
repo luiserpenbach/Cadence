@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell, Badge, DataTable, Panel } from "../../../components/ui";
 import { ensureAppData } from "../../../lib/bootstrap";
 import { getConfigBundle } from "../../../lib/queries";
-import { releaseConfig } from "../../../lib/actions";
+import { ReleaseConfigForm } from "../../../components/forms";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { eq } from "drizzle-orm";
@@ -124,29 +124,10 @@ export default async function ConfigDetailPage({
                   ? "R3 requires reviewer acknowledgment."
                   : "Soft gate — tests may still be draft."}
               </p>
-              <form action={releaseConfig} className="mt-3 space-y-2">
-                <input type="hidden" name="configId" value={config.id} />
-                <input
-                  name="by"
-                  placeholder="Released by"
-                  defaultValue="m.chen"
-                  className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-                />
-                {config.riskClass === "R3" ? (
-                  <input
-                    name="reviewer"
-                    placeholder="Reviewer"
-                    required
-                    className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-                  />
-                ) : null}
-                <button
-                  type="submit"
-                  className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
-                >
-                  Release config
-                </button>
-              </form>
+              <ReleaseConfigForm
+                configId={config.id}
+                riskClass={config.riskClass}
+              />
             </Panel>
           ) : (
             <Panel>
