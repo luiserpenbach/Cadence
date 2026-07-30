@@ -6,7 +6,11 @@ import { ensureAppData } from "../../../lib/bootstrap";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { getRunVerification } from "../../../lib/queries";
-import { AckGapsForm, RecordTestForm } from "../../../components/forms";
+import {
+  AckGapsForm,
+  RecordTestForm,
+  WaiverForm,
+} from "../../../components/forms";
 
 export const dynamic = "force-dynamic";
 
@@ -60,17 +64,26 @@ export default async function RunDetailPage({
     .all();
 
   const missing = verification.gaps.filter((g) => g.status === "missing");
+  const waivable = verification.gaps.filter((g) => g.status !== "waived");
 
   return (
     <AppShell title={run.key} subtitle={`Bound run on ${article.serial} @ ${stand.key}`}>
       <div className="mb-5 flex flex-wrap gap-2">
         <Badge tone="accent">{run.status}</Badge>
         {verification.gaps.length ? (
-          <Badge tone="warn">{verification.gaps.length} gaps</Badge>
+          <Badge tone={verification.unacknowledgedCount ? "warn" : "accent"}>
+            {verification.gaps.length} gaps
+          </Badge>
         ) : (
           <Badge tone="ok">clear</Badge>
         )}
-        {run.gapAcknowledged ? <Badge tone="accent">gap acknowledged</Badge> : null}
+        {verification.unacknowledgedCount ? (
+          <Badge tone="warn">
+            {verification.unacknowledgedCount} unacknowledged
+          </Badge>
+        ) : verification.gaps.length ? (
+          <Badge tone="accent">all gaps acknowledged</Badge>
+        ) : null}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
@@ -138,6 +151,7 @@ export default async function RunDetailPage({
                 <span className="font-mono text-xs">{g.key}</span>
                 <span>{g.name}</span>
                 <span className="text-[var(--muted)]">{g.detail}</span>
+                {g.acknowledged ? <Badge tone="accent">acked</Badge> : null}
               </li>
             ))}
             {verification.gaps.length === 0 ? (
@@ -145,31 +159,59 @@ export default async function RunDetailPage({
             ) : null}
           </ul>
 
-          {run.gapAcknowledged ? (
-            <p className="mt-4 text-sm text-[var(--muted)]">
-              Acknowledged by {run.gapAckBy}: {run.gapAckReason}
-            </p>
-          ) : (
+          {verification.acks.length > 0 ? (
+            <ul className="mt-4 space-y-1 text-sm text-[var(--muted)]">
+              {verification.acks.map((a) => (
+                <li key={a.id}>
+                  Acknowledged by {a.ackBy} · {a.ackAt}: {a.reason}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {verification.unacknowledgedCount > 0 ? (
             <AckGapsForm runId={run.id} />
-          )}
+          ) : null}
         </Panel>
 
-        <Panel>
-          <h2 className="font-display text-xl">Record test</h2>
-          {missing.length === 0 ? (
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              No missing required tests.
+        <div className="space-y-5">
+          <Panel>
+            <h2 className="font-display text-xl">Record test</h2>
+            {missing.length === 0 ? (
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                No missing required tests.
+              </p>
+            ) : (
+              <RecordTestForm
+                runId={run.id}
+                missing={missing.map((g) => ({
+                  testDefinitionId: g.testDefinitionId,
+                  key: g.key,
+                }))}
+              />
+            )}
+          </Panel>
+
+          <Panel>
+            <h2 className="font-display text-xl">Waive test</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Waivers are explicit objects — who, why, which test. Never a
+              silent green.
             </p>
-          ) : (
-            <RecordTestForm
-              runId={run.id}
-              missing={missing.map((g) => ({
-                testDefinitionId: g.testDefinitionId,
-                key: g.key,
-              }))}
-            />
-          )}
-        </Panel>
+            {waivable.length === 0 ? (
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                No open gaps to waive.
+              </p>
+            ) : (
+              <WaiverForm
+                runId={run.id}
+                waivable={waivable.map((g) => ({
+                  testDefinitionId: g.testDefinitionId,
+                  key: g.key,
+                }))}
+              />
+            )}
+          </Panel>
+        </div>
       </div>
 
       <Panel className="mt-5">

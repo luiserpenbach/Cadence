@@ -185,7 +185,7 @@ for everything after; 3–5 deliver the concept's "first win" loop end-to-end.
 7. Tests: verification report (incl. B1/B2 regressions), impact diff, release
    guards, cut-config copy.
 
-### Phase 2 — Lifecycle correctness (small/medium)
+### Phase 2 — Lifecycle correctness (small/medium) ✅ done
 *Goal: config lifecycle matches §3/§6.*
 
 1. On release of a config with `basedOnConfigId`, mark the base config

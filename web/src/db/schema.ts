@@ -204,12 +204,6 @@ export const runs = sqliteTable("runs", {
   status: text("status").notNull().default("planned"), // planned | in_progress | complete
   startedAt: text("started_at"),
   completedAt: text("completed_at"),
-  gapAcknowledged: integer("gap_acknowledged", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  gapAckBy: text("gap_ack_by"),
-  gapAckAt: text("gap_ack_at"),
-  gapAckReason: text("gap_ack_reason").notNull().default(""),
   notes: text("notes").notNull().default(""),
   createdAt: text("created_at")
     .notNull()
@@ -231,6 +225,33 @@ export const testResults = sqliteTable("test_results", {
     .notNull()
     .default(sql`(datetime('now'))`),
   recordedBy: text("recorded_by").notNull().default(""),
+});
+
+// Gap acknowledgments are explicit objects: who accepted proceeding, when,
+// why — and exactly which gaps (test + status at ack time). A gap that
+// appears after the ack is not covered and warns again.
+export const runGapAcks = sqliteTable("run_gap_acks", {
+  id: text("id").primaryKey(),
+  runId: text("run_id")
+    .notNull()
+    .references(() => runs.id),
+  ackBy: text("ack_by").notNull(),
+  ackAt: text("ack_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  reason: text("reason").notNull(),
+});
+
+export const runGapAckLines = sqliteTable("run_gap_ack_lines", {
+  id: text("id").primaryKey(),
+  ackId: text("ack_id")
+    .notNull()
+    .references(() => runGapAcks.id),
+  testDefinitionId: text("test_definition_id")
+    .notNull()
+    .references(() => testDefinitions.id),
+  // gap status when acknowledged: missing | fail | stale | waived
+  status: text("status").notNull(),
 });
 
 export const waivers = sqliteTable("waivers", {

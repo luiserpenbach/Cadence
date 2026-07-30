@@ -10,6 +10,8 @@ import { id } from "./id";
 import { ensureAppData } from "./bootstrap";
 import { releaseConfiguration } from "./domain/release";
 import { cutConfiguration } from "./domain/cut-config";
+import { acknowledgeGaps } from "./domain/ack";
+import { createWaiver } from "./domain/waiver";
 
 // Note: a "use server" module may only export async functions, so the
 // initial state lives with the client form components.
@@ -45,22 +47,40 @@ export async function acknowledgeRunGaps(
   }
   const { runId, by, reason } = parsed.data;
 
-  const db = getDb();
-  const run = db.select().from(s.runs).where(eq(s.runs.id, runId)).get();
-  if (!run) return fail("Run not found.");
-
-  db.update(s.runs)
-    .set({
-      gapAcknowledged: true,
-      gapAckBy: by,
-      gapAckAt: new Date().toISOString(),
-      gapAckReason: reason,
-    })
-    .where(eq(s.runs.id, runId))
-    .run();
+  const result = acknowledgeGaps(getDb(), { runId, by, reason });
+  if (!result.ok) return fail(result.error);
 
   revalidatePath(`/runs/${runId}`);
   revalidatePath("/runs");
+  return { ok: true, error: "" };
+}
+
+const waiverSchema = z.object({
+  runId: nonEmpty,
+  testDefinitionId: nonEmpty,
+  reason: nonEmpty,
+  approvedBy: nonEmpty,
+});
+
+export async function waiveTest(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = waiverSchema.safeParse({
+    runId: formData.get("runId"),
+    testDefinitionId: formData.get("testDefinitionId"),
+    reason: formData.get("reason"),
+    approvedBy: formData.get("approvedBy"),
+  });
+  if (!parsed.success) {
+    return fail("Test, reason, and approver are required for a waiver.");
+  }
+
+  const result = createWaiver(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/runs/${parsed.data.runId}`);
   return { ok: true, error: "" };
 }
 

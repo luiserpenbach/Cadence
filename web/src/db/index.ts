@@ -51,3 +51,12 @@ export function replaceDbForTests(sqlite: Database.Database) {
 }
 
 export type Db = ReturnType<typeof getDb>;
+
+// Structural union so domain functions run both standalone and inside
+// db.transaction() callbacks.
+export type Tx = Db["transaction"] extends (
+  fn: (tx: infer T) => unknown,
+) => unknown
+  ? T
+  : never;
+export type DbOrTx = Db | Tx;

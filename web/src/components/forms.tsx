@@ -6,6 +6,7 @@ import {
   cutConfigFrom,
   recordTestResult,
   releaseConfig,
+  waiveTest,
   type ActionState,
 } from "../lib/actions";
 
@@ -89,6 +90,48 @@ export function RecordTestForm({
         className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
       >
         Save result
+      </button>
+    </form>
+  );
+}
+
+export function WaiverForm({
+  runId,
+  waivable,
+}: {
+  runId: string;
+  waivable: Array<{ testDefinitionId: string; key: string }>;
+}) {
+  const [state, formAction, pending] = useActionState(waiveTest, initialState);
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input type="hidden" name="runId" value={runId} />
+      <select name="testDefinitionId" className={inputClass}>
+        {waivable.map((g) => (
+          <option key={g.testDefinitionId} value={g.testDefinitionId}>
+            {g.key}
+          </option>
+        ))}
+      </select>
+      <input
+        name="reason"
+        required
+        placeholder="Waiver reason"
+        className={inputClass}
+      />
+      <input
+        name="approvedBy"
+        required
+        placeholder="Approved by"
+        className={inputClass}
+      />
+      <ActionError state={state} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md border border-[var(--line)] px-4 py-2 text-sm disabled:opacity-60"
+      >
+        Record waiver
       </button>
     </form>
   );

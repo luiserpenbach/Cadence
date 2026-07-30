@@ -85,12 +85,15 @@ export default function HomePage() {
           {verification && activeRun ? (
             <div className="mt-4 space-y-3">
               <div className="flex flex-wrap gap-2">
-                <Badge tone={verification.gaps.length ? "warn" : "ok"}>
+                <Badge
+                  tone={verification.unacknowledgedCount ? "warn" : "ok"}
+                >
                   {verification.gaps.length} gaps
                 </Badge>
                 <Badge tone="ok">{verification.passes.length} pass</Badge>
-                {verification.acknowledged ? (
-                  <Badge tone="accent">gap ack</Badge>
+                {verification.gaps.length > 0 &&
+                verification.unacknowledgedCount === 0 ? (
+                  <Badge tone="accent">gaps acked</Badge>
                 ) : null}
               </div>
               <p className="text-sm text-[var(--muted)]">
@@ -98,7 +101,9 @@ export default function HomePage() {
                 <Link className="underline" href={`/runs/${activeRun.id}`}>
                   {activeRun.key}
                 </Link>
-                {verification.ackBy ? ` · ack by ${verification.ackBy}` : ""}
+                {verification.acks.length
+                  ? ` · ack by ${verification.acks[verification.acks.length - 1].ackBy}`
+                  : ""}
               </p>
               <ul className="space-y-1 text-sm">
                 {verification.gaps.slice(0, 4).map((g) => (

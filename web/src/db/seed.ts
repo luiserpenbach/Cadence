@@ -516,14 +516,31 @@ export function seedIfEmpty() {
       standConfigId: cfgStand,
       status: "in_progress",
       startedAt: new Date().toISOString(),
-      gapAcknowledged: true,
-      gapAckBy: "m.chen",
-      gapAckAt: new Date().toISOString(),
-      gapAckReason:
-        "Proceeding to cold-flow with leak check pending re-seal after orifice swap",
       notes: "First article on N+1",
     })
     .run();
+
+  // Explicit gap acknowledgment covering the two known-missing article tests
+  const ackId = id("ack");
+  db.insert(s.runGapAcks)
+    .values({
+      id: ackId,
+      runId,
+      ackBy: "m.chen",
+      reason:
+        "Proceeding to cold-flow with leak check pending re-seal after orifice swap",
+    })
+    .run();
+  for (const key of ["TST-LEAK-HE", "TST-COLD-FLOW"]) {
+    db.insert(s.runGapAckLines)
+      .values({
+        id: id("ackl"),
+        ackId,
+        testDefinitionId: testByKey[key],
+        status: "missing",
+      })
+      .run();
+  }
 
   db.insert(s.testResults)
     .values([

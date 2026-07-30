@@ -67,9 +67,20 @@ export default function RunsPage() {
               <span key="sc" className="font-mono text-xs">
                 {configs[r.standConfigId]?.key}
               </span>,
-              <Badge key="g" tone={v.gaps.length ? "warn" : "ok"}>
+              <Badge
+                key="g"
+                tone={
+                  v.unacknowledgedCount
+                    ? "warn"
+                    : v.gaps.length
+                      ? "accent"
+                      : "ok"
+                }
+              >
                 {v.gaps.length}
-                {r.gapAcknowledged ? " · ack" : ""}
+                {v.gaps.length > 0 && v.unacknowledgedCount === 0
+                  ? " · ack"
+                  : ""}
               </Badge>,
               <Badge
                 key="st"
