@@ -139,6 +139,25 @@ export function diffRequiredTests(fromId: string, toId: string) {
   return { added, removed, shared: shared.map((id) => byId[id]) };
 }
 
+// Default delta for the dashboard and /change: the most recently released
+// config that was cut from another, paired with its base.
+export function getDefaultDelta(): {
+  from: typeof s.configurations.$inferSelect;
+  to: typeof s.configurations.$inferSelect;
+} | null {
+  const db = getDb();
+  const configs = db.select().from(s.configurations).all();
+  const byId = new Map(configs.map((c) => [c.id, c]));
+  const to = configs
+    .filter((c) => c.status === "released" && c.basedOnConfigId)
+    .sort((a, b) => (a.releasedAt ?? "").localeCompare(b.releasedAt ?? ""))
+    .at(-1);
+  if (!to?.basedOnConfigId) return null;
+  const from = byId.get(to.basedOnConfigId);
+  if (!from) return null;
+  return { from, to };
+}
+
 export type ImpactReport = {
   from: typeof s.configurations.$inferSelect;
   to: typeof s.configurations.$inferSelect;

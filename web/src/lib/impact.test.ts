@@ -10,7 +10,7 @@ import {
   makePart,
   makeRevision,
 } from "../test/fixtures";
-import { buildImpactReport, diffBom } from "./impact";
+import { buildImpactReport, diffBom, getDefaultDelta } from "./impact";
 import { compareSerials } from "./serial";
 
 describe("compareSerials", () => {
@@ -64,6 +64,27 @@ describe("buildImpactReport", () => {
 
   it("returns null for unknown config ids (B8)", () => {
     expect(buildImpactReport("nope", "also-nope")).toBeNull();
+  });
+
+  it("getDefaultDelta pairs the latest released cut config with its base", () => {
+    expect(getDefaultDelta()).toBeNull();
+
+    const base = makeConfig(db, "CFG-N", { status: "superseded" });
+    makeConfig(db, "CFG-N1", {
+      status: "released",
+      basedOnConfigId: base,
+      releasedAt: "2026-07-01T00:00:00Z",
+    });
+    const newerBase = makeConfig(db, "CFG-M", { status: "superseded" });
+    makeConfig(db, "CFG-M1", {
+      status: "released",
+      basedOnConfigId: newerBase,
+      releasedAt: "2026-07-15T00:00:00Z",
+    });
+
+    const delta = getDefaultDelta()!;
+    expect(delta.from.key).toBe("CFG-M");
+    expect(delta.to.key).toBe("CFG-M1");
   });
 
   it("lists articles below the serial cut-in using numeric order (B6)", () => {

@@ -238,7 +238,7 @@ for everything after; 3–5 deliver the concept's "first win" loop end-to-end.
    optionally bound to a run; article page shows as-designed vs as-built
    delta (reuses `diffBom` against the bound config).
 
-### Phase 5 — Generalized change view & polish (small)
+### Phase 5 — Generalized change view & polish (small) ✅ done
 1. `/change?from=…&to=…` with config pickers, defaulting to the newest
    released config and its `basedOnConfigId` (G8); dashboard derives its
    "active delta" the same way instead of literal keys.

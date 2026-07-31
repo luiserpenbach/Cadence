@@ -31,6 +31,11 @@ import {
   removeRequiredTest,
 } from "./domain/config-edit";
 import { recordAsBuilt } from "./domain/asbuilt";
+import {
+  createProcedure,
+  createTestDefinition,
+  reviseProcedure,
+} from "./domain/procedures";
 
 // Note: a "use server" module may only export async functions, so the
 // initial state lives with the client form components.
@@ -379,6 +384,80 @@ export async function recordAsBuiltAction(
   if (!result.ok) return fail(result.error);
   revalidatePath(`/articles/${parsed.data.articleId}`);
   revalidatePath("/articles");
+  return { ok: true, error: "" };
+}
+
+const newProcedureSchema = z.object({
+  key: nonEmpty,
+  title: nonEmpty,
+  body: z.string(),
+});
+
+export async function createProcedureAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = newProcedureSchema.safeParse({
+    key: formData.get("key"),
+    title: formData.get("title"),
+    body: String(formData.get("body") ?? ""),
+  });
+  if (!parsed.success) return fail("Key and title are required.");
+
+  const result = createProcedure(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/procedures");
+  return { ok: true, error: "" };
+}
+
+const reviseProcedureSchema = z.object({
+  procedureId: nonEmpty,
+  title: nonEmpty,
+  body: z.string(),
+});
+
+export async function reviseProcedureAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = reviseProcedureSchema.safeParse({
+    procedureId: formData.get("procedureId"),
+    title: formData.get("title"),
+    body: String(formData.get("body") ?? ""),
+  });
+  if (!parsed.success) return fail("Procedure and title are required.");
+
+  const result = reviseProcedure(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/procedures");
+  return { ok: true, error: "" };
+}
+
+const newTestDefSchema = z.object({
+  key: nonEmpty,
+  name: nonEmpty,
+  description: z.string().trim(),
+  appliesTo: z.enum(["article", "stand", "either"]),
+});
+
+export async function createTestDefinitionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = newTestDefSchema.safeParse({
+    key: formData.get("key"),
+    name: formData.get("name"),
+    description: String(formData.get("description") ?? ""),
+    appliesTo: formData.get("appliesTo"),
+  });
+  if (!parsed.success) return fail("Key, name, and applies-to are required.");
+
+  const result = createTestDefinition(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/procedures");
   return { ok: true, error: "" };
 }
 

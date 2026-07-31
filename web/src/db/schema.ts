@@ -145,6 +145,8 @@ export const configBomLines = sqliteTable("config_bom_lines", {
   notes: text("notes").notNull().default(""),
 });
 
+// Procedures version like part revisions: editing releases a new (key,
+// version) row so configs keep pointing at the exact text they released with.
 export const procedures = sqliteTable(
   "procedures",
   {
@@ -154,7 +156,7 @@ export const procedures = sqliteTable(
     body: text("body").notNull().default(""),
     version: text("version").notNull().default("A"),
   },
-  (t) => [uniqueIndex("procedures_key_uidx").on(t.key)],
+  (t) => [uniqueIndex("procedures_key_version_uidx").on(t.key, t.version)],
 );
 
 export const configProcedures = sqliteTable("config_procedures", {

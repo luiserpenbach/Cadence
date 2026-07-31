@@ -7,8 +7,11 @@ import {
   createArticleAction,
   createConfigAction,
   createPartAction,
+  createProcedureAction,
   createStandAction,
+  createTestDefinitionAction,
   recordAsBuiltAction,
+  reviseProcedureAction,
   type ActionState,
 } from "../lib/actions";
 
@@ -236,6 +239,100 @@ export function AsBuiltForm({
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Record as-built line
+      </button>
+    </form>
+  );
+}
+
+export function NewProcedureForm() {
+  const [state, formAction, pending] = useActionState(
+    createProcedureAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input
+        name="key"
+        required
+        placeholder="Key (PROC-PURGE-1)"
+        className={`font-mono ${inputClass}`}
+      />
+      <input name="title" required placeholder="Title" className={inputClass} />
+      <textarea
+        name="body"
+        placeholder="Steps…"
+        className={`min-h-24 ${inputClass}`}
+      />
+      <ActionError state={state} />
+      <button type="submit" disabled={pending} className={buttonClass}>
+        Create procedure (v A)
+      </button>
+    </form>
+  );
+}
+
+export function ReviseProcedureForm({
+  procedureId,
+  title,
+  body,
+}: {
+  procedureId: string;
+  title: string;
+  body: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    reviseProcedureAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-2 space-y-2">
+      <input type="hidden" name="procedureId" value={procedureId} />
+      <input
+        name="title"
+        required
+        defaultValue={title}
+        className={inputClass}
+      />
+      <textarea
+        name="body"
+        defaultValue={body}
+        className={`min-h-24 ${inputClass}`}
+      />
+      <ActionError state={state} />
+      <button type="submit" disabled={pending} className={subtleButtonClass}>
+        Release new version
+      </button>
+    </form>
+  );
+}
+
+export function NewTestDefForm() {
+  const [state, formAction, pending] = useActionState(
+    createTestDefinitionAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input
+        name="key"
+        required
+        placeholder="Key (TST-LEAK-N2)"
+        className={`font-mono ${inputClass}`}
+      />
+      <input name="name" required placeholder="Name" className={inputClass} />
+      <input
+        name="description"
+        placeholder="Description"
+        className={inputClass}
+      />
+      <select name="appliesTo" className={inputClass}>
+        <option value="article">article</option>
+        <option value="stand">stand</option>
+        <option value="either">either</option>
+      </select>
+      <ActionError state={state} />
+      <button type="submit" disabled={pending} className={buttonClass}>
+        Create test definition
       </button>
     </form>
   );

@@ -4,7 +4,7 @@ import { ensureAppData } from "../lib/bootstrap";
 import { getDb } from "../db";
 import * as s from "../db/schema";
 import { getRunVerification } from "../lib/queries";
-import { buildImpactReport } from "../lib/impact";
+import { buildImpactReport, getDefaultDelta } from "../lib/impact";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +17,51 @@ export default function HomePage() {
   const runs = db.select().from(s.runs).all();
   const parts = db.select().from(s.parts).all();
 
-  const cfgN = configs.find((c) => c.key === "CH4-FEED-N");
-  const cfgNp1 = configs.find((c) => c.key === "CH4-FEED-N+1");
+  const delta = getDefaultDelta();
   const activeRun = runs.find((r) => r.status === "in_progress");
   const verification = activeRun ? getRunVerification(activeRun.id) : null;
-  const impact =
-    cfgN && cfgNp1 ? buildImpactReport(cfgN.id, cfgNp1.id) : null;
+  const impact = delta ? buildImpactReport(delta.from.id, delta.to.id) : null;
+
+  if (parts.length === 0 && configs.length === 0) {
+    return (
+      <AppShell
+        title="Empty database"
+        subtitle="Author your product from scratch, or load the cryo demo dataset."
+      >
+        <Panel>
+          <ol className="space-y-2 text-sm text-[var(--muted)]">
+            <li>
+              1. Author parts in the{" "}
+              <Link className="underline" href="/catalog">
+                Catalog
+              </Link>
+              , articles, and stands
+            </li>
+            <li>
+              2. Create a config on{" "}
+              <Link className="underline" href="/configs">
+                Configs
+              </Link>{" "}
+              — pin BoM, tests, procedures, effectivity — and release it
+            </li>
+            <li>
+              3. Bind a run on{" "}
+              <Link className="underline" href="/runs">
+                Runs
+              </Link>{" "}
+              — the resolver picks the configs
+            </li>
+          </ol>
+          <p className="mt-4 text-sm text-[var(--muted)]">
+            Or load demo data:{" "}
+            <code className="rounded bg-[var(--panel-strong)] px-1.5 py-0.5 font-mono text-xs">
+              npm run db:seed
+            </code>
+          </p>
+        </Panel>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell
@@ -37,10 +76,14 @@ export default function HomePage() {
                 Active delta
               </div>
               <h2 className="mt-1 font-display text-2xl">
-                {cfgN?.key} → {cfgNp1?.key}
+                {delta ? `${delta.from.key} → ${delta.to.key}` : "No delta yet"}
               </h2>
             </div>
-            <Badge tone="danger">R3 release</Badge>
+            {delta ? (
+              <Badge tone={delta.to.riskClass === "R3" ? "danger" : "neutral"}>
+                {delta.to.riskClass} release
+              </Badge>
+            ) : null}
           </div>
           {impact ? (
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -60,7 +103,11 @@ export default function HomePage() {
                 hint="still on N"
               />
             </div>
-          ) : null}
+          ) : (
+            <p className="mt-4 text-sm text-[var(--muted)]">
+              Release a config cut from another to see its blast radius here.
+            </p>
+          )}
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
               href="/change"
@@ -69,10 +116,10 @@ export default function HomePage() {
               Open change impact
             </Link>
             <Link
-              href={cfgNp1 ? `/configs/${cfgNp1.id}` : "/configs"}
+              href={delta ? `/configs/${delta.to.id}` : "/configs"}
               className="rounded-md border border-[var(--line)] px-4 py-2 text-sm"
             >
-              View N+1 config
+              {delta ? `View ${delta.to.key}` : "View configs"}
             </Link>
           </div>
         </Panel>
