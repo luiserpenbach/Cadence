@@ -225,7 +225,7 @@ for everything after; 3–5 deliver the concept's "first win" loop end-to-end.
 4. Run lifecycle actions: start (`planned → in_progress`, warn+ack on gaps at
    start per §6) and complete.
 
-### Phase 4 — Authoring (medium)
+### Phase 4 — Authoring (medium) ✅ done
 *Goal: first-win step 1 — model a BoM in Cadence.*
 
 1. Create part + revision from `/catalog`; create article and stand.

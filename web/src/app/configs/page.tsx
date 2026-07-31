@@ -4,6 +4,7 @@ import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
 import { CutConfigForm } from "../../components/forms";
+import { NewConfigForm } from "../../components/authoring-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,7 @@ export default function ConfigsPage() {
           />
         </Panel>
 
+        <div className="space-y-5">
         <Panel>
           <h2 className="font-display text-xl">Cut new config</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
@@ -76,6 +78,16 @@ export default function ConfigsPage() {
             defaultBasedOnId={configs.find((c) => c.key === "CH4-FEED-N+1")?.id}
           />
         </Panel>
+
+        <Panel>
+          <h2 className="font-display text-xl">New config from scratch</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Empty draft — author BoM pins, tests, procedures, and effectivity
+            on the config page.
+          </p>
+          <NewConfigForm />
+        </Panel>
+        </div>
       </div>
     </AppShell>
   );
