@@ -1,6 +1,5 @@
 import { relations, sql } from "drizzle-orm";
 import {
-  integer,
   real,
   sqliteTable,
   text,
@@ -99,21 +98,25 @@ export const configurations = sqliteTable(
   (t) => [uniqueIndex("configurations_key_uidx").on(t.key)],
 );
 
+export const articleScopes = ["any", "serial_range", "explicit"] as const;
+export type ArticleScope = (typeof articleScopes)[number];
+
+export const standScopes = ["any", "explicit"] as const;
+export type StandScope = (typeof standScopes)[number];
+
 export const configEffectivity = sqliteTable("config_effectivity", {
   id: text("id").primaryKey(),
   configId: text("config_id")
     .notNull()
     .references(() => configurations.id),
-  // null standId => any stand
-  standId: text("stand_id").references(() => stands.id),
-  // null => any article; otherwise matched via config_effectivity_articles
-  // and/or serial range fields below
+  // any => all articles; serial_range => serialFrom/serialTo (natural serial
+  // order); explicit => rows in config_effectivity_articles
+  articleScope: text("article_scope").notNull().default("any"),
   serialFrom: text("serial_from"),
   serialTo: text("serial_to"),
-  anyArticle: integer("any_article", { mode: "boolean" })
-    .notNull()
-    .default(true),
-  anyStand: integer("any_stand", { mode: "boolean" }).notNull().default(true),
+  // any => all stands; explicit => standId
+  standScope: text("stand_scope").notNull().default("any"),
+  standId: text("stand_id").references(() => stands.id),
 });
 
 export const configEffectivityArticles = sqliteTable(

@@ -9,32 +9,35 @@ export type ExecutionContext = {
   standId: string;
 };
 
-// Does any effectivity row of `configId` cover the (article, stand) context?
-export function configCovers(
+// Specificity of a matching effectivity row (CONCEPT §4, most specific wins):
+// 3 = article-specific AND stand-specific (exact)
+// 2 = article-specific, any stand
+// 1 = stand-specific, any article
+// 0 = any article, any stand
+export type SpecificityRank = 0 | 1 | 2 | 3;
+
+type EffectivityRow = typeof s.configEffectivity.$inferSelect;
+
+// Rank of a row for a context, or null when the row does not cover it.
+export function rankEffectivityRow(
   db: DbOrTx,
-  configId: string,
+  row: EffectivityRow,
   ctx: ExecutionContext,
-): boolean {
-  const rows = db
-    .select()
-    .from(s.configEffectivity)
-    .where(eq(s.configEffectivity.configId, configId))
-    .all();
+): SpecificityRank | null {
+  const standSpecific = row.standScope === "explicit";
+  if (standSpecific && row.standId !== ctx.standId) return null;
 
-  return rows.some((row) => {
-    const standOk = row.anyStand || row.standId === ctx.standId;
-    if (!standOk) return false;
-
-    if (row.anyArticle) {
-      if (row.serialFrom && compareSerials(ctx.articleSerial, row.serialFrom) < 0) {
-        return false;
-      }
-      if (row.serialTo && compareSerials(ctx.articleSerial, row.serialTo) > 0) {
-        return false;
-      }
-      return true;
+  let articleSpecific = false;
+  if (row.articleScope === "serial_range") {
+    articleSpecific = true;
+    if (row.serialFrom && compareSerials(ctx.articleSerial, row.serialFrom) < 0) {
+      return null;
     }
-
+    if (row.serialTo && compareSerials(ctx.articleSerial, row.serialTo) > 0) {
+      return null;
+    }
+  } else if (row.articleScope === "explicit") {
+    articleSpecific = true;
     const link = db
       .select({ id: s.configEffectivityArticles.id })
       .from(s.configEffectivityArticles)
@@ -45,6 +48,40 @@ export function configCovers(
         ),
       )
       .get();
-    return Boolean(link);
-  });
+    if (!link) return null;
+  }
+
+  if (articleSpecific && standSpecific) return 3;
+  if (articleSpecific) return 2;
+  if (standSpecific) return 1;
+  return 0;
+}
+
+// Best (highest) specificity with which `configId` covers the context, or
+// null when no effectivity row covers it.
+export function configRank(
+  db: DbOrTx,
+  configId: string,
+  ctx: ExecutionContext,
+): SpecificityRank | null {
+  const rows = db
+    .select()
+    .from(s.configEffectivity)
+    .where(eq(s.configEffectivity.configId, configId))
+    .all();
+
+  let best: SpecificityRank | null = null;
+  for (const row of rows) {
+    const rank = rankEffectivityRow(db, row, ctx);
+    if (rank !== null && (best === null || rank > best)) best = rank;
+  }
+  return best;
+}
+
+export function configCovers(
+  db: DbOrTx,
+  configId: string,
+  ctx: ExecutionContext,
+): boolean {
+  return configRank(db, configId, ctx) !== null;
 }

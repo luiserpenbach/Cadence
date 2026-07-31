@@ -15,6 +15,20 @@
       "when": 1785450872973,
       "tag": "0001_gap_acks",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785498008554,
+      "tag": "0002_effectivity_scopes",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785498024369,
+      "tag": "0003_drop_any_flags",
+      "breakpoints": true
     }
   ]
 }

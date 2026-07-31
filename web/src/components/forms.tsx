@@ -3,9 +3,11 @@
 import { useActionState } from "react";
 import {
   acknowledgeRunGaps,
+  createRunAction,
   cutConfigFrom,
   recordTestResult,
   releaseConfig,
+  runLifecycleAction,
   waiveTest,
   type ActionState,
 } from "../lib/actions";
@@ -90,6 +92,82 @@ export function RecordTestForm({
         className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
       >
         Save result
+      </button>
+    </form>
+  );
+}
+
+export function NewRunForm({
+  articles,
+  stands,
+}: {
+  articles: Array<{ id: string; serial: string; name: string }>;
+  stands: Array<{ id: string; key: string; name: string }>;
+}) {
+  const [state, formAction, pending] = useActionState(
+    createRunAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-4 space-y-3">
+      <label className="block text-sm">
+        Article
+        <select name="articleId" className={`mt-1 ${inputClass}`}>
+          {articles.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.serial} — {a.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block text-sm">
+        Stand
+        <select name="standId" className={`mt-1 ${inputClass}`}>
+          {stands.map((st) => (
+            <option key={st.id} value={st.id}>
+              {st.key} — {st.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <ActionError state={state} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+      >
+        Resolve configs &amp; bind run
+      </button>
+    </form>
+  );
+}
+
+export function RunLifecycleForm({
+  runId,
+  transition,
+}: {
+  runId: string;
+  transition: "start" | "complete";
+}) {
+  const [state, formAction, pending] = useActionState(
+    runLifecycleAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="space-y-2">
+      <input type="hidden" name="runId" value={runId} />
+      <input type="hidden" name="transition" value={transition} />
+      <ActionError state={state} />
+      <button
+        type="submit"
+        disabled={pending}
+        className={
+          transition === "start"
+            ? "rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+            : "rounded-md border border-[var(--line)] px-4 py-2 text-sm disabled:opacity-60"
+        }
+      >
+        {transition === "start" ? "Start run" : "Complete run"}
       </button>
     </form>
   );

@@ -200,8 +200,15 @@ for everything after; 3–5 deliver the concept's "first win" loop end-to-end.
 4. Waiver creation form on run detail (G6): reason + approver required,
    binds `(run, testDefinition)`; shows in verification as today.
 
-### Phase 3 — Resolution engine + run creation (medium; the wedge)
+### Phase 3 — Resolution engine + run creation (medium; the wedge) ✅ done
 *Goal: the bench binds runs by rule, not by seed.*
+
+> Implementation notes: `serialSeq` was skipped — the tested natural-order
+> serial comparator covers range semantics without a second source of truth.
+> Known tension for a later phase (hard problem #2, partial deployment):
+> release currently supersedes the base config globally, while a partial
+> cut-in (N+1 for TP-017+ only) wants the base to stay live for earlier
+> serials with partitioned effectivity — the seed now models the latter.
 
 1. Effectivity schema cleanup (improvement #2): explicit scope
    discriminators + `serialSeq`; data migration from current rows.

@@ -94,18 +94,23 @@ export default async function ConfigDetailPage({
                 >
                   <div>
                     Articles:{" "}
-                    {e.anyArticle
-                      ? e.serialFrom
-                        ? `from ${e.serialFrom}`
-                        : "any"
-                      : explicitArticles
-                          .filter((a) => a.effectivityId === e.id)
-                          .map((a) => a.serial)
-                          .join(", ") || "explicit list"}
+                    {e.articleScope === "any"
+                      ? "any"
+                      : e.articleScope === "serial_range"
+                        ? [
+                            e.serialFrom ? `from ${e.serialFrom}` : null,
+                            e.serialTo ? `to ${e.serialTo}` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" ") || "range"
+                        : explicitArticles
+                            .filter((a) => a.effectivityId === e.id)
+                            .map((a) => a.serial)
+                            .join(", ") || "explicit list"}
                   </div>
                   <div>
                     Stand:{" "}
-                    {e.anyStand
+                    {e.standScope === "any"
                       ? "any"
                       : e.standId
                         ? standById[e.standId]?.key

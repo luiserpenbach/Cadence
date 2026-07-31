@@ -9,6 +9,7 @@ import { getRunVerification } from "../../../lib/queries";
 import {
   AckGapsForm,
   RecordTestForm,
+  RunLifecycleForm,
   WaiverForm,
 } from "../../../components/forms";
 
@@ -84,6 +85,13 @@ export default async function RunDetailPage({
         ) : verification.gaps.length ? (
           <Badge tone="accent">all gaps acknowledged</Badge>
         ) : null}
+        <div className="ml-auto">
+          {run.status === "planned" ? (
+            <RunLifecycleForm runId={run.id} transition="start" />
+          ) : run.status === "in_progress" ? (
+            <RunLifecycleForm runId={run.id} transition="complete" />
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">

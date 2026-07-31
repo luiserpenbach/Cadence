@@ -41,9 +41,9 @@ describe("cutConfiguration", () => {
       .values({
         id: effId,
         configId: baseId,
+        articleScope: "explicit",
+        standScope: "explicit",
         standId,
-        anyStand: false,
-        anyArticle: false,
       })
       .run();
     db.insert(s.configEffectivityArticles)
@@ -103,7 +103,8 @@ describe("cutConfiguration", () => {
       .where(eq(s.configEffectivity.configId, newId))
       .all();
     expect(effectivity).toHaveLength(1);
-    expect(effectivity[0].anyStand).toBe(false);
+    expect(effectivity[0].standScope).toBe("explicit");
+    expect(effectivity[0].articleScope).toBe("explicit");
     expect(
       db
         .select()

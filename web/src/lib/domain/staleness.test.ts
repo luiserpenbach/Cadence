@@ -102,7 +102,12 @@ describe("supersede + staleness on release", () => {
       .where(eq(s.configEffectivity.configId, nextId))
       .run();
     db.insert(s.configEffectivity)
-      .values({ id: id("eff"), configId: nextId, serialFrom: "TP-100" })
+      .values({
+        id: id("eff"),
+        configId: nextId,
+        articleScope: "serial_range",
+        serialFrom: "TP-100",
+      })
       .run();
 
     const runId = makeBoundRun("TP-001");

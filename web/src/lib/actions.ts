@@ -12,6 +12,7 @@ import { releaseConfiguration } from "./domain/release";
 import { cutConfiguration } from "./domain/cut-config";
 import { acknowledgeGaps } from "./domain/ack";
 import { createWaiver } from "./domain/waiver";
+import { completeRun, createRun, startRun } from "./domain/run";
 
 // Note: a "use server" module may only export async functions, so the
 // initial state lives with the client form components.
@@ -125,6 +126,59 @@ export async function recordTestResult(
     .run();
 
   revalidatePath(`/runs/${runId}`);
+  return { ok: true, error: "" };
+}
+
+const newRunSchema = z.object({
+  articleId: nonEmpty,
+  standId: nonEmpty,
+});
+
+export async function createRunAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = newRunSchema.safeParse({
+    articleId: formData.get("articleId"),
+    standId: formData.get("standId"),
+  });
+  if (!parsed.success) {
+    return fail("Article and stand are required.");
+  }
+
+  const result = createRun(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath("/runs");
+  redirect(`/runs/${result.runId}`);
+}
+
+const runLifecycleSchema = z.object({
+  runId: nonEmpty,
+  transition: z.enum(["start", "complete"]),
+});
+
+export async function runLifecycleAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = runLifecycleSchema.safeParse({
+    runId: formData.get("runId"),
+    transition: formData.get("transition"),
+  });
+  if (!parsed.success) return fail("Invalid run transition.");
+  const { runId, transition } = parsed.data;
+
+  const result =
+    transition === "start"
+      ? startRun(getDb(), runId)
+      : completeRun(getDb(), runId);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/runs/${runId}`);
+  revalidatePath("/runs");
   return { ok: true, error: "" };
 }
 

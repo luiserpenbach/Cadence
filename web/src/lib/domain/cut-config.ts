@@ -107,11 +107,11 @@ export function cutConfiguration(db: Db, input: CutConfigInput): CutConfigResult
         .values({
           id: newEffId,
           configId: newId,
-          standId: e.standId,
+          articleScope: e.articleScope,
           serialFrom: e.serialFrom,
           serialTo: e.serialTo,
-          anyArticle: e.anyArticle,
-          anyStand: e.anyStand,
+          standScope: e.standScope,
+          standId: e.standId,
         })
         .run();
 
