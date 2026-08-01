@@ -15,6 +15,7 @@ import {
   BomLineEditor,
   ConfigEditButton,
 } from "../../../components/authoring-forms";
+import { AttachmentsPanel } from "../../../components/attachments-panel";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { eq } from "drizzle-orm";
@@ -347,6 +348,17 @@ export default async function ConfigDetailPage({
           ) : null}
         </Panel>
       </div>
+
+      <Panel className="mt-5">
+        <h2 className="font-display text-xl">Attachments</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Reference material for this config — release evidence, reports,
+          drawings. Attachments are metadata, not pins.
+        </p>
+        <div className="mt-2">
+          <AttachmentsPanel entityType="configuration" entityId={config.id} />
+        </div>
+      </Panel>
 
       {config.notes ? (
         <Panel className="mt-5">

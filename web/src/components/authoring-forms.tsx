@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import {
+  addLinkAttachmentAction,
   addPartRevisionAction,
   configEditAction,
   createArticleAction,
@@ -12,7 +13,9 @@ import {
   createTestDefinitionAction,
   cutInRevisionAction,
   recordAsBuiltAction,
+  removeAttachmentAction,
   reviseProcedureAction,
+  uploadFileAttachmentAction,
   type ActionState,
 } from "../lib/actions";
 
@@ -73,9 +76,136 @@ export function NewPartForm() {
           className={`w-24 ${inputClass}`}
         />
       </div>
+      <div className="flex gap-2">
+        <select name="sourcing" defaultValue="buy" className={inputClass}>
+          <option value="make">make</option>
+          <option value="buy">buy</option>
+          <option value="cots">cots</option>
+        </select>
+        <select name="kind" defaultValue="component" className={inputClass}>
+          <option value="component">component</option>
+          <option value="assembly">assembly</option>
+        </select>
+      </div>
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Create part
+      </button>
+    </form>
+  );
+}
+
+export function AttachmentForms({
+  entityType,
+  entityId,
+}: {
+  entityType: "part" | "configuration";
+  entityId: string;
+}) {
+  const [linkState, linkAction, linkPending] = useActionState(
+    addLinkAttachmentAction,
+    initialState,
+  );
+  const [fileState, fileAction, filePending] = useActionState(
+    uploadFileAttachmentAction,
+    initialState,
+  );
+  return (
+    <div className="mt-3 space-y-4">
+      <form action={linkAction} className="space-y-2">
+        <input type="hidden" name="entityType" value={entityType} />
+        <input type="hidden" name="entityId" value={entityId} />
+        <div className="flex gap-2">
+          <input
+            name="url"
+            required
+            placeholder="https://… (drawing, datasheet)"
+            className={inputClass}
+          />
+          <input
+            name="label"
+            placeholder="Label"
+            className={`w-36 ${inputClass}`}
+          />
+        </div>
+        <div className="flex gap-2">
+          <input
+            name="by"
+            defaultValue="m.chen"
+            className={`w-32 ${inputClass}`}
+          />
+          <button
+            type="submit"
+            disabled={linkPending}
+            className={subtleButtonClass}
+          >
+            Add link
+          </button>
+        </div>
+        <ActionError state={linkState} />
+      </form>
+
+      <form action={fileAction} className="space-y-2">
+        <input type="hidden" name="entityType" value={entityType} />
+        <input type="hidden" name="entityId" value={entityId} />
+        <input
+          type="file"
+          name="file"
+          required
+          className="block w-full text-sm file:mr-2 file:rounded-md file:border file:border-[var(--line)] file:bg-white file:px-3 file:py-1.5 file:text-sm"
+        />
+        <div className="flex gap-2">
+          <input
+            name="label"
+            placeholder="Label (optional)"
+            className={inputClass}
+          />
+          <input
+            name="by"
+            defaultValue="m.chen"
+            className={`w-32 ${inputClass}`}
+          />
+          <button
+            type="submit"
+            disabled={filePending}
+            className={subtleButtonClass}
+          >
+            Upload
+          </button>
+        </div>
+        <ActionError state={fileState} />
+      </form>
+    </div>
+  );
+}
+
+export function RemoveAttachmentButton({
+  attachmentId,
+  entityType,
+  entityId,
+}: {
+  attachmentId: string;
+  entityType: string;
+  entityId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    removeAttachmentAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="inline">
+      <input type="hidden" name="attachmentId" value={attachmentId} />
+      <input type="hidden" name="entityType" value={entityType} />
+      <input type="hidden" name="entityId" value={entityId} />
+      {state.error ? (
+        <span className="mr-1 text-xs text-rose-700">{state.error}</span>
+      ) : null}
+      <button
+        type="submit"
+        disabled={pending}
+        className="text-xs text-rose-700 underline-offset-2 hover:underline disabled:opacity-60"
+      >
+        remove
       </button>
     </form>
   );

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
@@ -16,9 +17,12 @@ export default function CatalogPage() {
   const db = getDb();
   const rows = db
     .select({
+      partId: s.parts.id,
       partNumber: s.parts.partNumber,
       name: s.parts.name,
       category: s.parts.category,
+      sourcing: s.parts.sourcing,
+      kind: s.parts.kind,
       revision: s.partRevisions.revision,
       notes: s.partRevisions.notes,
       status: s.partRevisions.status,
@@ -57,17 +61,28 @@ export default function CatalogPage() {
       <div className="grid gap-5 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <DataTable
-            headers={["Part", "Rev", "Name", "Category", "Status", "Notes"]}
+            headers={["Part", "Rev", "Name", "Type", "Sourcing", "Notes"]}
             rows={rows.map((r) => [
-              <span key="pn" className="font-mono text-xs">
+              <Link
+                key="pn"
+                href={`/catalog/${r.partId}`}
+                className="font-mono text-xs underline-offset-2 hover:underline"
+              >
                 {r.partNumber}
-              </span>,
+              </Link>,
               <Badge key="rev" tone="accent">
                 {r.revision}
               </Badge>,
               r.name,
-              r.category,
-              r.status,
+              <span key="t" className="text-xs">
+                {r.category}
+                {r.kind === "assembly" ? (
+                  <Badge tone="warn"> assembly</Badge>
+                ) : null}
+              </span>,
+              <Badge key="src" tone={r.sourcing === "make" ? "accent" : "neutral"}>
+                {r.sourcing}
+              </Badge>,
               <span key="n" className="text-[var(--muted)]">
                 {r.notes || "—"}
               </span>,

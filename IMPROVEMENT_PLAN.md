@@ -301,6 +301,22 @@ genealogy out — no schema changes, a pure read model over existing data.*
 3. Serial/lot values across the app link into /trace; article pages link to
    full genealogy.
 
+### Phase 9 — Part metadata & attachments ✅ done
+*Goal (pre-testing gaps): make/buy sourcing, declared assembly kind, and
+link/file attachments.*
+
+1. Parts carry sourcing (make | buy | cots) and kind (component | assembly)
+   — declared attributes with catalog badges and creation-form selects.
+   Part-to-part structure (real assembly trees) remains a separate design
+   pass per hard problem #1.
+2. Attachments on parts and configurations: http(s) links (validated) and
+   uploaded files (stored under data/uploads by attachment id, sanitized
+   names, served via /files/[id] with correct content type; 20 MB action
+   body limit). Labels default sensibly; removal deletes row + file.
+3. New /catalog/[id] part detail page: revisions, where-used (configs
+   pinning any rev), attachments panel, add-revision form. Config detail
+   gains the same attachments panel.
+
 ### Explicitly deferred (per concept freeze)
 Hard gating by risk class, CAD/PLM import, date effectivity, multi-site,
 rate production, auth/multi-user (keep free-text identity fields for v0, but

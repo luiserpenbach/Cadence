@@ -49,6 +49,14 @@ import {
   startExecution,
   stepOutcomes,
 } from "./domain/execution";
+import {
+  addFileAttachment,
+  addLinkAttachment,
+  removeAttachment,
+} from "./domain/attachments";
+import path from "node:path";
+
+const uploadsDir = path.join(process.cwd(), "data", "uploads");
 
 // Note: a "use server" module may only export async functions, so the
 // initial state lives with the client form components.
@@ -342,6 +350,8 @@ const newPartSchema = z.object({
   name: nonEmpty,
   category: nonEmpty,
   revision: nonEmpty,
+  sourcing: z.enum(s.partSourcings),
+  kind: z.enum(s.partKinds),
 });
 
 export async function createPartAction(
@@ -354,6 +364,8 @@ export async function createPartAction(
     name: formData.get("name"),
     category: formData.get("category"),
     revision: formData.get("revision"),
+    sourcing: formData.get("sourcing"),
+    kind: formData.get("kind"),
   });
   if (!parsed.success) {
     return fail("Part number, name, category, and initial revision are required.");
@@ -362,6 +374,91 @@ export async function createPartAction(
   const result = createPart(getDb(), parsed.data);
   if (!result.ok) return fail(result.error);
   revalidatePath("/catalog");
+  return { ok: true, error: "" };
+}
+
+const attachmentTarget = z.object({
+  entityType: z.enum(s.attachmentEntities),
+  entityId: nonEmpty,
+  by: nonEmpty,
+});
+
+function attachmentPath(entityType: string, entityId: string) {
+  return entityType === "part" ? `/catalog/${entityId}` : `/configs/${entityId}`;
+}
+
+export async function addLinkAttachmentAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = attachmentTarget
+    .extend({ url: nonEmpty, label: z.string().trim() })
+    .safeParse({
+      entityType: formData.get("entityType"),
+      entityId: formData.get("entityId"),
+      by: formData.get("by"),
+      url: formData.get("url"),
+      label: String(formData.get("label") ?? ""),
+    });
+  if (!parsed.success) return fail("A URL and your name are required.");
+
+  const result = addLinkAttachment(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath(attachmentPath(parsed.data.entityType, parsed.data.entityId));
+  return { ok: true, error: "" };
+}
+
+export async function uploadFileAttachmentAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = attachmentTarget
+    .extend({ label: z.string().trim() })
+    .safeParse({
+      entityType: formData.get("entityType"),
+      entityId: formData.get("entityId"),
+      by: formData.get("by"),
+      label: String(formData.get("label") ?? ""),
+    });
+  if (!parsed.success) return fail("A file and your name are required.");
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return fail("Choose a file to upload.");
+  }
+
+  const result = addFileAttachment(
+    getDb(),
+    {
+      ...parsed.data,
+      fileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+      bytes: Buffer.from(await file.arrayBuffer()),
+    },
+    uploadsDir,
+  );
+  if (!result.ok) return fail(result.error);
+  revalidatePath(attachmentPath(parsed.data.entityType, parsed.data.entityId));
+  return { ok: true, error: "" };
+}
+
+export async function removeAttachmentAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const attachmentId = String(formData.get("attachmentId") ?? "");
+  const entityType = String(formData.get("entityType") ?? "");
+  const entityId = String(formData.get("entityId") ?? "");
+  if (!attachmentId) return fail("Attachment is required.");
+
+  const result = removeAttachment(getDb(), attachmentId, uploadsDir);
+  if (!result.ok) return fail(result.error);
+  if (entityType && entityId) {
+    revalidatePath(attachmentPath(entityType, entityId));
+  }
   return { ok: true, error: "" };
 }
 

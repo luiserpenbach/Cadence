@@ -23,6 +23,12 @@ export const releaseStatuses = [
 ] as const;
 export type ReleaseStatus = (typeof releaseStatuses)[number];
 
+export const partSourcings = ["make", "buy", "cots"] as const;
+export type PartSourcing = (typeof partSourcings)[number];
+
+export const partKinds = ["component", "assembly"] as const;
+export type PartKind = (typeof partKinds)[number];
+
 export const parts = sqliteTable(
   "parts",
   {
@@ -31,6 +37,10 @@ export const parts = sqliteTable(
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
     category: text("category").notNull().default("hardware"),
+    // make | buy | cots
+    sourcing: text("sourcing").notNull().default("buy"),
+    // component | assembly (declared; part-to-part structure is post-v0)
+    kind: text("kind").notNull().default("component"),
     createdAt: text("created_at")
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -368,6 +378,26 @@ export const purchaseOrderLines = sqliteTable("purchase_order_lines", {
     .references(() => partRevisions.id),
   qty: real("qty").notNull().default(1),
   unitCost: real("unit_cost").notNull().default(0),
+});
+
+// Drawings, datasheets, reports — links or uploaded files, attached to a
+// part or a configuration. PDFs are attachments, not truth (CONCEPT §10.4).
+export const attachmentEntities = ["part", "configuration"] as const;
+export type AttachmentEntity = (typeof attachmentEntities)[number];
+
+export const attachments = sqliteTable("attachments", {
+  id: text("id").primaryKey(),
+  entityType: text("entity_type").notNull(), // part | configuration
+  entityId: text("entity_id").notNull(),
+  kind: text("kind").notNull(), // link | file
+  label: text("label").notNull(),
+  url: text("url").notNull().default(""), // for links
+  fileName: text("file_name").notNull().default(""), // for files (on disk)
+  mimeType: text("mime_type").notNull().default(""),
+  addedBy: text("added_by").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
 });
 
 export const partsRelations = relations(parts, ({ many }) => ({

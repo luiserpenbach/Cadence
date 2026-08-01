@@ -94,6 +94,7 @@ export function seedIfEmpty() {
   for (const p of partDefs) {
     const pid = id("part");
     partIds[p.pn] = pid;
+    const madeInHouse = ["BRK-MANIFOLD", "MNF-STAND-B", "TUBE-SS316-050"];
     db.insert(s.parts)
       .values({
         id: pid,
@@ -101,6 +102,8 @@ export function seedIfEmpty() {
         name: p.name,
         category: p.category,
         description: p.name,
+        sourcing: madeInHouse.includes(p.pn) ? "make" : "buy",
+        kind: p.pn === "MNF-STAND-B" ? "assembly" : "component",
       })
       .run();
     for (const r of p.revs) {
@@ -117,6 +120,19 @@ export function seedIfEmpty() {
         .run();
     }
   }
+
+  // Sample link attachment: valve drawing reference
+  db.insert(s.attachments)
+    .values({
+      id: id("att"),
+      entityType: "part",
+      entityId: partIds["VLV-CRYO-050"],
+      kind: "link",
+      label: "VLV-CRYO-050 drawing (rev B)",
+      url: "https://example.com/drawings/VLV-CRYO-050-B.pdf",
+      addedBy: "m.chen",
+    })
+    .run();
 
   // --- Stands & articles ---
   const standB = id("stand");
