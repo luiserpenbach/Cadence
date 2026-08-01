@@ -1,6 +1,5 @@
 import { relations, sql } from "drizzle-orm";
 import {
-  integer,
   real,
   sqliteTable,
   text,
@@ -99,21 +98,25 @@ export const configurations = sqliteTable(
   (t) => [uniqueIndex("configurations_key_uidx").on(t.key)],
 );
 
+export const articleScopes = ["any", "serial_range", "explicit"] as const;
+export type ArticleScope = (typeof articleScopes)[number];
+
+export const standScopes = ["any", "explicit"] as const;
+export type StandScope = (typeof standScopes)[number];
+
 export const configEffectivity = sqliteTable("config_effectivity", {
   id: text("id").primaryKey(),
   configId: text("config_id")
     .notNull()
     .references(() => configurations.id),
-  // null standId => any stand
-  standId: text("stand_id").references(() => stands.id),
-  // null => any article; otherwise matched via config_effectivity_articles
-  // and/or serial range fields below
+  // any => all articles; serial_range => serialFrom/serialTo (natural serial
+  // order); explicit => rows in config_effectivity_articles
+  articleScope: text("article_scope").notNull().default("any"),
   serialFrom: text("serial_from"),
   serialTo: text("serial_to"),
-  anyArticle: integer("any_article", { mode: "boolean" })
-    .notNull()
-    .default(true),
-  anyStand: integer("any_stand", { mode: "boolean" }).notNull().default(true),
+  // any => all stands; explicit => standId
+  standScope: text("stand_scope").notNull().default("any"),
+  standId: text("stand_id").references(() => stands.id),
 });
 
 export const configEffectivityArticles = sqliteTable(
@@ -142,6 +145,8 @@ export const configBomLines = sqliteTable("config_bom_lines", {
   notes: text("notes").notNull().default(""),
 });
 
+// Procedures version like part revisions: editing releases a new (key,
+// version) row so configs keep pointing at the exact text they released with.
 export const procedures = sqliteTable(
   "procedures",
   {
@@ -151,7 +156,7 @@ export const procedures = sqliteTable(
     body: text("body").notNull().default(""),
     version: text("version").notNull().default("A"),
   },
-  (t) => [uniqueIndex("procedures_key_uidx").on(t.key)],
+  (t) => [uniqueIndex("procedures_key_version_uidx").on(t.key, t.version)],
 );
 
 export const configProcedures = sqliteTable("config_procedures", {
@@ -204,12 +209,6 @@ export const runs = sqliteTable("runs", {
   status: text("status").notNull().default("planned"), // planned | in_progress | complete
   startedAt: text("started_at"),
   completedAt: text("completed_at"),
-  gapAcknowledged: integer("gap_acknowledged", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  gapAckBy: text("gap_ack_by"),
-  gapAckAt: text("gap_ack_at"),
-  gapAckReason: text("gap_ack_reason").notNull().default(""),
   notes: text("notes").notNull().default(""),
   createdAt: text("created_at")
     .notNull()
@@ -231,6 +230,33 @@ export const testResults = sqliteTable("test_results", {
     .notNull()
     .default(sql`(datetime('now'))`),
   recordedBy: text("recorded_by").notNull().default(""),
+});
+
+// Gap acknowledgments are explicit objects: who accepted proceeding, when,
+// why — and exactly which gaps (test + status at ack time). A gap that
+// appears after the ack is not covered and warns again.
+export const runGapAcks = sqliteTable("run_gap_acks", {
+  id: text("id").primaryKey(),
+  runId: text("run_id")
+    .notNull()
+    .references(() => runs.id),
+  ackBy: text("ack_by").notNull(),
+  ackAt: text("ack_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  reason: text("reason").notNull(),
+});
+
+export const runGapAckLines = sqliteTable("run_gap_ack_lines", {
+  id: text("id").primaryKey(),
+  ackId: text("ack_id")
+    .notNull()
+    .references(() => runGapAcks.id),
+  testDefinitionId: text("test_definition_id")
+    .notNull()
+    .references(() => testDefinitions.id),
+  // gap status when acknowledged: missing | fail | stale | waived
+  status: text("status").notNull(),
 });
 
 export const waivers = sqliteTable("waivers", {

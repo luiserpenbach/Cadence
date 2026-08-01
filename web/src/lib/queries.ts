@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import * as s from "../db/schema";
 
@@ -9,27 +9,29 @@ export type VerificationGap = {
   source: "article" | "stand";
   status: "missing" | "fail" | "stale" | "waived";
   detail: string;
+  // covered by an explicit gap acknowledgment for this (test, status)
+  acknowledged: boolean;
+};
+
+export type VerificationAck = {
+  id: string;
+  ackBy: string;
+  ackAt: string;
+  reason: string;
 };
 
 export type VerificationReport = {
   gaps: VerificationGap[];
   passes: Array<{ key: string; name: string; source: "article" | "stand" }>;
-  acknowledged: boolean;
-  ackBy: string | null;
-  ackReason: string;
+  acks: VerificationAck[];
+  unacknowledgedCount: number;
 };
 
 export function getRunVerification(runId: string): VerificationReport {
   const db = getDb();
   const run = db.select().from(s.runs).where(eq(s.runs.id, runId)).get();
   if (!run) {
-    return {
-      gaps: [],
-      passes: [],
-      acknowledged: false,
-      ackBy: null,
-      ackReason: "",
-    };
+    return { gaps: [], passes: [], acks: [], unacknowledgedCount: 0 };
   }
 
   const articleTests = db
@@ -63,84 +65,99 @@ export function getRunVerification(runId: string): VerificationReport {
     .map((t) => ({ ...t, source: "stand" as const }));
 
   const required = [...articleTests, ...standTests];
+  // Ordered ascending so the Map keeps the most recently recorded result per
+  // test; rowid breaks same-second ties in insertion order.
   const results = db
     .select()
     .from(s.testResults)
     .where(eq(s.testResults.runId, runId))
+    .orderBy(asc(s.testResults.recordedAt), asc(sql`rowid`))
     .all();
   const resultByTest = new Map(results.map((r) => [r.testDefinitionId, r]));
 
-  const waiverRows =
-    results.length > 0
-      ? db.select().from(s.waivers).where(eq(s.waivers.runId, runId)).all()
+  const waiverRows = db
+    .select()
+    .from(s.waivers)
+    .where(eq(s.waivers.runId, runId))
+    .all();
+  const waiverByTest = new Map(waiverRows.map((w) => [w.testDefinitionId, w]));
+
+  const ackRows = db
+    .select()
+    .from(s.runGapAcks)
+    .where(eq(s.runGapAcks.runId, runId))
+    .all();
+  const ackLines =
+    ackRows.length > 0
+      ? db
+          .select()
+          .from(s.runGapAckLines)
+          .where(
+            inArray(
+              s.runGapAckLines.ackId,
+              ackRows.map((a) => a.id),
+            ),
+          )
+          .all()
       : [];
-  const waived = new Set(waiverRows.map((w) => w.testDefinitionId));
+  const ackedPairs = new Set(
+    ackLines.map((l) => `${l.testDefinitionId}:${l.status}`),
+  );
 
   const gaps: VerificationGap[] = [];
   const passes: VerificationReport["passes"] = [];
 
+  const pushGap = (
+    t: (typeof required)[number],
+    status: VerificationGap["status"],
+    detail: string,
+  ) => {
+    gaps.push({
+      testDefinitionId: t.id,
+      key: t.key,
+      name: t.name,
+      source: t.source,
+      status,
+      detail,
+      acknowledged: ackedPairs.has(`${t.id}:${status}`),
+    });
+  };
+
   for (const t of required) {
     const res = resultByTest.get(t.id);
-    if (!res) {
-      if (waived.has(t.id)) {
-        gaps.push({
-          testDefinitionId: t.id,
-          key: t.key,
-          name: t.name,
-          source: t.source,
-          status: "waived",
-          detail: "Waived",
-        });
-      } else {
-        gaps.push({
-          testDefinitionId: t.id,
-          key: t.key,
-          name: t.name,
-          source: t.source,
-          status: "missing",
-          detail: "No result recorded",
-        });
-      }
+    const waiver = waiverByTest.get(t.id);
+
+    if (res?.status === "pass") {
+      passes.push({ key: t.key, name: t.name, source: t.source });
       continue;
     }
-    if (res.status === "pass") {
-      passes.push({ key: t.key, name: t.name, source: t.source });
+    // An explicit waiver covers a missing/failed/stale test; only a pass
+    // outranks it.
+    if (waiver) {
+      pushGap(t, "waived", `${waiver.reason} (${waiver.approvedBy})`);
+      continue;
+    }
+    if (!res) {
+      pushGap(t, "missing", "No result recorded");
     } else if (res.status === "fail") {
-      gaps.push({
-        testDefinitionId: t.id,
-        key: t.key,
-        name: t.name,
-        source: t.source,
-        status: "fail",
-        detail: res.notes || res.value || "Failed",
-      });
+      pushGap(t, "fail", res.notes || res.value || "Failed");
     } else if (res.status === "stale") {
-      gaps.push({
-        testDefinitionId: t.id,
-        key: t.key,
-        name: t.name,
-        source: t.source,
-        status: "stale",
-        detail: "Marked stale after config change",
-      });
+      pushGap(t, "stale", res.notes || "Marked stale after config change");
     } else if (res.status === "waived") {
-      gaps.push({
-        testDefinitionId: t.id,
-        key: t.key,
-        name: t.name,
-        source: t.source,
-        status: "waived",
-        detail: res.notes || "Waived",
-      });
+      pushGap(t, "waived", res.notes || "Waived");
     }
   }
 
   return {
     gaps,
     passes,
-    acknowledged: run.gapAcknowledged,
-    ackBy: run.gapAckBy,
-    ackReason: run.gapAckReason,
+    acks: ackRows.map((a) => ({
+      id: a.id,
+      ackBy: a.ackBy,
+      ackAt: a.ackAt,
+      reason: a.reason,
+    })),
+    unacknowledgedCount: gaps.filter((g) => !g.acknowledged).length,
   };
 }
 

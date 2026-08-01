@@ -4,6 +4,7 @@ import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
 import { getRunVerification } from "../../lib/queries";
+import { NewRunForm } from "../../components/forms";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,8 @@ export default function RunsPage() {
   ensureAppData();
   const db = getDb();
   const runs = db.select().from(s.runs).all();
+  const articleRows = db.select().from(s.articles).all();
+  const standRows = db.select().from(s.stands).all();
   const articles = Object.fromEntries(
     db
       .select()
@@ -38,7 +41,8 @@ export default function RunsPage() {
       title="Runs"
       subtitle="Run = article + article config + stand + stand config. Verification is record-and-warn."
     >
-      <Panel>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Panel className="lg:col-span-2">
         <DataTable
           headers={[
             "Run",
@@ -67,9 +71,20 @@ export default function RunsPage() {
               <span key="sc" className="font-mono text-xs">
                 {configs[r.standConfigId]?.key}
               </span>,
-              <Badge key="g" tone={v.gaps.length ? "warn" : "ok"}>
+              <Badge
+                key="g"
+                tone={
+                  v.unacknowledgedCount
+                    ? "warn"
+                    : v.gaps.length
+                      ? "accent"
+                      : "ok"
+                }
+              >
                 {v.gaps.length}
-                {r.gapAcknowledged ? " · ack" : ""}
+                {v.gaps.length > 0 && v.unacknowledgedCount === 0
+                  ? " · ack"
+                  : ""}
               </Badge>,
               <Badge
                 key="st"
@@ -80,7 +95,28 @@ export default function RunsPage() {
             ];
           })}
         />
-      </Panel>
+        </Panel>
+
+        <Panel>
+          <h2 className="font-display text-xl">New run</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Pick article and stand — the resolver binds the most specific
+            released configs. Conflicts and missing configs block.
+          </p>
+          <NewRunForm
+            articles={articleRows.map((a) => ({
+              id: a.id,
+              serial: a.serial,
+              name: a.name,
+            }))}
+            stands={standRows.map((st) => ({
+              id: st.id,
+              key: st.key,
+              name: st.name,
+            }))}
+          />
+        </Panel>
+      </div>
     </AppShell>
   );
 }

@@ -263,10 +263,12 @@ export function seedIfEmpty() {
     .values({
       id: effN,
       configId: cfgN,
-      anyArticle: true,
-      anyStand: true,
+      articleScope: "serial_range",
       serialFrom: "TP-014",
-      serialTo: null,
+      // capped when N+1 cut in for TP-017+ so the two configs partition
+      // serials instead of overlapping (equal specificity would conflict)
+      serialTo: "TP-016",
+      standScope: "any",
     })
     .run();
 
@@ -332,10 +334,8 @@ export function seedIfEmpty() {
     .values({
       id: effNp1,
       configId: cfgNp1,
-      anyArticle: false,
-      anyStand: true,
-      serialFrom: "TP-017",
-      serialTo: null,
+      articleScope: "explicit",
+      standScope: "any",
     })
     .run();
   for (const serial of ["TP-017", "TP-018"]) {
@@ -403,9 +403,9 @@ export function seedIfEmpty() {
     .values({
       id: id("eff"),
       configId: cfgStand,
+      articleScope: "any",
+      standScope: "explicit",
       standId: standB,
-      anyArticle: true,
-      anyStand: false,
     })
     .run();
   for (const [revKey, qty, find] of [
@@ -516,14 +516,31 @@ export function seedIfEmpty() {
       standConfigId: cfgStand,
       status: "in_progress",
       startedAt: new Date().toISOString(),
-      gapAcknowledged: true,
-      gapAckBy: "m.chen",
-      gapAckAt: new Date().toISOString(),
-      gapAckReason:
-        "Proceeding to cold-flow with leak check pending re-seal after orifice swap",
       notes: "First article on N+1",
     })
     .run();
+
+  // Explicit gap acknowledgment covering the two known-missing article tests
+  const ackId = id("ack");
+  db.insert(s.runGapAcks)
+    .values({
+      id: ackId,
+      runId,
+      ackBy: "m.chen",
+      reason:
+        "Proceeding to cold-flow with leak check pending re-seal after orifice swap",
+    })
+    .run();
+  for (const key of ["TST-LEAK-HE", "TST-COLD-FLOW"]) {
+    db.insert(s.runGapAckLines)
+      .values({
+        id: id("ackl"),
+        ackId,
+        testDefinitionId: testByKey[key],
+        status: "missing",
+      })
+      .run();
+  }
 
   db.insert(s.testResults)
     .values([

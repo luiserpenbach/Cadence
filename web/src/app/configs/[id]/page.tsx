@@ -3,7 +3,13 @@ import { notFound } from "next/navigation";
 import { AppShell, Badge, DataTable, Panel } from "../../../components/ui";
 import { ensureAppData } from "../../../lib/bootstrap";
 import { getConfigBundle } from "../../../lib/queries";
-import { releaseConfig } from "../../../lib/actions";
+import { ReleaseConfigForm } from "../../../components/forms";
+import {
+  AddBomLineForm,
+  AddEffectivityForm,
+  AddLinkForm,
+  ConfigEditButton,
+} from "../../../components/authoring-forms";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { eq } from "drizzle-orm";
@@ -31,8 +37,26 @@ export default async function ConfigDetailPage({
         .get()
     : null;
 
-  const stands = getDb().select().from(s.stands).all();
+  const db = getDb();
+  const stands = db.select().from(s.stands).all();
   const standById = Object.fromEntries(stands.map((st) => [st.id, st]));
+
+  const isDraft = config.status === "draft";
+  const partRevs = isDraft
+    ? db
+        .select({
+          id: s.partRevisions.id,
+          partNumber: s.parts.partNumber,
+          revision: s.partRevisions.revision,
+        })
+        .from(s.partRevisions)
+        .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
+        .all()
+        .sort((a, b) => a.partNumber.localeCompare(b.partNumber))
+    : [];
+  const allTestDefs = isDraft ? db.select().from(s.testDefinitions).all() : [];
+  const allProcedures = isDraft ? db.select().from(s.procedures).all() : [];
+  const allArticles = isDraft ? db.select().from(s.articles).all() : [];
 
   return (
     <AppShell
@@ -64,23 +88,52 @@ export default async function ConfigDetailPage({
           <h2 className="font-display text-xl">BoM pins</h2>
           <div className="mt-3">
             <DataTable
-              headers={["Find", "Part", "Rev", "Qty", "Name"]}
+              headers={
+                isDraft
+                  ? ["Find", "Part", "Rev", "Qty", "Name", ""]
+                  : ["Find", "Part", "Rev", "Qty", "Name"]
+              }
               rows={bom
                 .slice()
                 .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
-                .map((l) => [
-                  <span key="f" className="font-mono text-xs">
-                    {l.findNumber}
-                  </span>,
-                  <span key="p" className="font-mono text-xs">
-                    {l.partNumber}
-                  </span>,
-                  l.revision,
-                  String(l.qty),
-                  l.name,
-                ])}
+                .map((l) => {
+                  const cells = [
+                    <span key="f" className="font-mono text-xs">
+                      {l.findNumber}
+                    </span>,
+                    <span key="p" className="font-mono text-xs">
+                      {l.partNumber}
+                    </span>,
+                    l.revision,
+                    String(l.qty),
+                    l.name,
+                  ];
+                  if (isDraft) {
+                    cells.push(
+                      <ConfigEditButton
+                        key="rm"
+                        label="remove"
+                        payload={{
+                          op: "remove_bom",
+                          configId: config.id,
+                          bomLineId: l.id,
+                        }}
+                      />,
+                    );
+                  }
+                  return cells;
+                })}
             />
           </div>
+          {isDraft ? (
+            <AddBomLineForm
+              configId={config.id}
+              partRevs={partRevs.map((p) => ({
+                id: p.id,
+                label: `${p.partNumber} @ ${p.revision}`,
+              }))}
+            />
+          ) : null}
         </Panel>
 
         <div className="space-y-5">
@@ -94,26 +147,53 @@ export default async function ConfigDetailPage({
                 >
                   <div>
                     Articles:{" "}
-                    {e.anyArticle
-                      ? e.serialFrom
-                        ? `from ${e.serialFrom}`
-                        : "any"
-                      : explicitArticles
-                          .filter((a) => a.effectivityId === e.id)
-                          .map((a) => a.serial)
-                          .join(", ") || "explicit list"}
+                    {e.articleScope === "any"
+                      ? "any"
+                      : e.articleScope === "serial_range"
+                        ? [
+                            e.serialFrom ? `from ${e.serialFrom}` : null,
+                            e.serialTo ? `to ${e.serialTo}` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" ") || "range"
+                        : explicitArticles
+                            .filter((a) => a.effectivityId === e.id)
+                            .map((a) => a.serial)
+                            .join(", ") || "explicit list"}
                   </div>
                   <div>
                     Stand:{" "}
-                    {e.anyStand
+                    {e.standScope === "any"
                       ? "any"
                       : e.standId
                         ? standById[e.standId]?.key
                         : "—"}
                   </div>
+                  {isDraft ? (
+                    <div className="mt-1">
+                      <ConfigEditButton
+                        label="remove"
+                        payload={{
+                          op: "remove_eff",
+                          configId: config.id,
+                          effectivityId: e.id,
+                        }}
+                      />
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
+            {isDraft ? (
+              <AddEffectivityForm
+                configId={config.id}
+                stands={stands.map((st) => ({ id: st.id, key: st.key }))}
+                articles={allArticles.map((a) => ({
+                  id: a.id,
+                  serial: a.serial,
+                }))}
+              />
+            ) : null}
           </Panel>
 
           {config.status !== "released" ? (
@@ -124,29 +204,10 @@ export default async function ConfigDetailPage({
                   ? "R3 requires reviewer acknowledgment."
                   : "Soft gate — tests may still be draft."}
               </p>
-              <form action={releaseConfig} className="mt-3 space-y-2">
-                <input type="hidden" name="configId" value={config.id} />
-                <input
-                  name="by"
-                  placeholder="Released by"
-                  defaultValue="m.chen"
-                  className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-                />
-                {config.riskClass === "R3" ? (
-                  <input
-                    name="reviewer"
-                    placeholder="Reviewer"
-                    required
-                    className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
-                  />
-                ) : null}
-                <button
-                  type="submit"
-                  className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
-                >
-                  Release config
-                </button>
-              </form>
+              <ReleaseConfigForm
+                configId={config.id}
+                riskClass={config.riskClass}
+              />
             </Panel>
           ) : (
             <Panel>
@@ -167,22 +228,56 @@ export default async function ConfigDetailPage({
           <h2 className="font-display text-xl">Required tests</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {tests.map((t) => (
-              <li key={t.id} className="flex gap-2">
+              <li key={t.id} className="flex items-center gap-2">
                 <span className="font-mono text-xs text-[var(--accent)]">
                   {t.key}
                 </span>
                 <span>{t.name}</span>
+                {isDraft ? (
+                  <ConfigEditButton
+                    label="remove"
+                    payload={{
+                      op: "remove_test",
+                      configId: config.id,
+                      testDefinitionId: t.id,
+                    }}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>
+          {isDraft ? (
+            <AddLinkForm
+              configId={config.id}
+              op="add_test"
+              fieldName="testDefinitionId"
+              label="Require"
+              options={allTestDefs.map((t) => ({
+                id: t.id,
+                label: `${t.key} — ${t.name}`,
+              }))}
+            />
+          ) : null}
         </Panel>
         <Panel>
           <h2 className="font-display text-xl">Procedures</h2>
           <div className="mt-3 space-y-4">
             {procedures.map((p) => (
               <div key={p.id}>
-                <div className="font-mono text-xs text-[var(--accent)]">
-                  {p.key} · v{p.version}
+                <div className="flex items-center gap-2">
+                  <div className="font-mono text-xs text-[var(--accent)]">
+                    {p.key} · v{p.version}
+                  </div>
+                  {isDraft ? (
+                    <ConfigEditButton
+                      label="remove"
+                      payload={{
+                        op: "remove_proc",
+                        configId: config.id,
+                        procedureId: p.id,
+                      }}
+                    />
+                  ) : null}
                 </div>
                 <div className="font-medium">{p.title}</div>
                 <pre className="mt-1 whitespace-pre-wrap text-sm text-[var(--muted)]">
@@ -191,6 +286,18 @@ export default async function ConfigDetailPage({
               </div>
             ))}
           </div>
+          {isDraft ? (
+            <AddLinkForm
+              configId={config.id}
+              op="add_proc"
+              fieldName="procedureId"
+              label="Link"
+              options={allProcedures.map((p) => ({
+                id: p.id,
+                label: `${p.key} — ${p.title}`,
+              }))}
+            />
+          ) : null}
         </Panel>
       </div>
 

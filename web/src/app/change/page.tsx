@@ -3,34 +3,106 @@ import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
-import { buildImpactReport } from "../../lib/impact";
+import { buildImpactReport, getDefaultDelta } from "../../lib/impact";
 
 export const dynamic = "force-dynamic";
 
-export default function ChangePage() {
+export default async function ChangePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   ensureAppData();
+  const params = await searchParams;
   const configs = getDb().select().from(s.configurations).all();
-  const from = configs.find((c) => c.key === "CH4-FEED-N");
-  const to = configs.find((c) => c.key === "CH4-FEED-N+1");
 
-  if (!from || !to) {
+  const fromParam = typeof params.from === "string" ? params.from : "";
+  const toParam = typeof params.to === "string" ? params.to : "";
+  const fallback = getDefaultDelta();
+  const fromId = fromParam || fallback?.from.id || "";
+  const toId = toParam || fallback?.to.id || "";
+
+  const impact = fromId && toId ? buildImpactReport(fromId, toId) : null;
+
+  const picker = (
+    <Panel>
+      <h2 className="font-display text-xl">Compare configs</h2>
+      <form method="get" className="mt-3 flex flex-wrap items-end gap-2">
+        <label className="block text-sm">
+          From
+          <select
+            name="from"
+            defaultValue={fromId}
+            className="mt-1 block rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+          >
+            {configs.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.key} ({c.status})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm">
+          To
+          <select
+            name="to"
+            defaultValue={toId}
+            className="mt-1 block rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+          >
+            {configs.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.key} ({c.status})
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="submit"
+          className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
+        >
+          Compare
+        </button>
+      </form>
+    </Panel>
+  );
+
+  if (!impact) {
     return (
-      <AppShell title="Change impact" subtitle="Seed data missing.">
-        <Panel>No baseline delta available.</Panel>
+      <AppShell
+        title="Change impact"
+        subtitle="Pick two configs to see the delta and blast radius."
+      >
+        {configs.length === 0 ? (
+          <Panel>
+            No configs yet — author one on the{" "}
+            <Link className="underline" href="/configs">
+              Configs
+            </Link>{" "}
+            page.
+          </Panel>
+        ) : (
+          picker
+        )}
       </AppShell>
     );
   }
 
-  const impact = buildImpactReport(from.id, to.id);
+  const { from, to } = impact;
 
   return (
     <AppShell
       title="Change impact"
       subtitle={`${from.key} → ${to.key} — blast radius for the overnight cut-in.`}
     >
+      <div className="mb-5">{picker}</div>
+
       <div className="mb-5 flex flex-wrap gap-2">
-        <Badge tone="danger">{to.riskClass}</Badge>
-        <Badge tone="ok">{to.status}</Badge>
+        <Badge tone={to.riskClass === "R3" ? "danger" : "neutral"}>
+          {to.riskClass}
+        </Badge>
+        <Badge tone={to.status === "released" ? "ok" : "warn"}>
+          {to.status}
+        </Badge>
         {to.reviewerAckBy ? (
           <Badge tone="accent">reviewer {to.reviewerAckBy}</Badge>
         ) : null}
@@ -102,6 +174,18 @@ export default function ChangePage() {
                 ))}
               </div>
             ) : null}
+            {impact.testDiff.removed.length ? (
+              <div>
+                <div className="text-xs uppercase text-[var(--muted)]">
+                  Removed
+                </div>
+                {impact.testDiff.removed.map((t) => (
+                  <div key={t.id} className="font-mono text-xs">
+                    {t.key}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
           <Link
             href={`/configs/${to.id}`}
@@ -117,7 +201,7 @@ export default function ChangePage() {
           <h2 className="font-display text-xl">Inventory shortages</h2>
           {impact.inventoryShortages.length === 0 ? (
             <p className="mt-2 text-sm text-[var(--muted)]">
-              Enough on hand for one kit of N+1.
+              Enough on hand for one kit of {to.key}.
             </p>
           ) : (
             <DataTable
@@ -136,7 +220,7 @@ export default function ChangePage() {
         <Panel>
           <h2 className="font-display text-xl">Articles still on prior</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Serials before N+1 effectivity cut-in remain on {from.key}.
+            Serials before the {to.key} effectivity cut-in remain on {from.key}.
           </p>
           <ul className="mt-3 space-y-1 text-sm">
             {impact.articlesOnPrior.map((a) => (
@@ -144,6 +228,9 @@ export default function ChangePage() {
                 {a.serial} — {a.name}
               </li>
             ))}
+            {impact.articlesOnPrior.length === 0 ? (
+              <li className="text-sm text-[var(--muted)]">None.</li>
+            ) : null}
           </ul>
         </Panel>
       </div>
