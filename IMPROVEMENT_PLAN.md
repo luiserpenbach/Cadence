@@ -286,6 +286,21 @@ evidence, not documents — the largest market-baseline gap.*
    with start/reopen; executions require an in-progress run (record-and-warn
    gate upstream). New step-by-step execution page per (run, procedure).
 
+### Phase 8 — QR/serial genealogy ✅ done
+*Goal (competitive delta, Boltline's aBOM): one identifier in, full
+genealogy out — no schema changes, a pure read model over existing data.*
+
+1. /trace: scan or type an article serial, an installed part serial/lot, or
+   an inventory lot code (case-insensitive). Article hits show build history
+   (as-built with lot links) and test history (runs, configs, pass/gap
+   counts, as-run executions). Item hits show installed-on articles, stock
+   on hand, and the supplier trail via purchase orders for the part revision.
+2. QR labels (server-rendered SVG, `qrcode` dep) on trace results and article
+   pages, encoding the absolute trace URL — scan a unit's label on a phone
+   and land on its genealogy.
+3. Serial/lot values across the app link into /trace; article pages link to
+   full genealogy.
+
 ### Explicitly deferred (per concept freeze)
 Hard gating by risk class, CAD/PLM import, date effectivity, multi-site,
 rate production, auth/multi-user (keep free-text identity fields for v0, but

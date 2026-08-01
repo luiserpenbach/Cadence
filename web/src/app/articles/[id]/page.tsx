@@ -7,6 +7,7 @@ import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { diffAsBuilt } from "../../../lib/domain/asbuilt";
 import { AsBuiltForm } from "../../../components/authoring-forms";
+import { QrLabel } from "../../../components/qr";
 
 export const dynamic = "force-dynamic";
 
@@ -68,19 +69,28 @@ export default async function ArticleDetailPage({
 
   return (
     <AppShell title={article.serial} subtitle={article.name}>
-      <div className="mb-5 flex flex-wrap gap-2">
-        <Badge tone="neutral">{article.status}</Badge>
-        {delta ? (
-          delta.lines.length === 0 ? (
-            <Badge tone="ok">matches {delta.configKey}</Badge>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Badge tone="neutral">{article.status}</Badge>
+          {delta ? (
+            delta.lines.length === 0 ? (
+              <Badge tone="ok">matches {delta.configKey}</Badge>
+            ) : (
+              <Badge tone="warn">
+                {delta.lines.length} deltas vs {delta.configKey}
+              </Badge>
+            )
           ) : (
-            <Badge tone="warn">
-              {delta.lines.length} deltas vs {delta.configKey}
-            </Badge>
-          )
-        ) : (
-          <Badge tone="neutral">no bound run yet</Badge>
-        )}
+            <Badge tone="neutral">no bound run yet</Badge>
+          )}
+          <Link
+            className="text-sm underline"
+            href={`/trace?q=${encodeURIComponent(article.serial)}`}
+          >
+            Full genealogy
+          </Link>
+        </div>
+        <QrLabel identifier={article.serial} size={96} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
@@ -95,7 +105,17 @@ export default async function ArticleDetailPage({
                 </span>,
                 l.revision,
                 String(l.qty),
-                l.serialOrLot || "—",
+                l.serialOrLot ? (
+                  <Link
+                    key="sl"
+                    className="font-mono text-xs underline"
+                    href={`/trace?q=${encodeURIComponent(l.serialOrLot)}`}
+                  >
+                    {l.serialOrLot}
+                  </Link>
+                ) : (
+                  "—"
+                ),
                 l.runId ? (
                   <Link
                     key="r"

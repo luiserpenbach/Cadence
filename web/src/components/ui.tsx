@@ -9,6 +9,7 @@ const nav = [
   { href: "/floor", label: "Floor" },
   { href: "/runs", label: "Runs" },
   { href: "/procedures", label: "Procedures" },
+  { href: "/trace", label: "Trace" },
   { href: "/change", label: "Change impact" },
   { href: "/inventory", label: "Inventory" },
   { href: "/procurement", label: "Procurement" },
