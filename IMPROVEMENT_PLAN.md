@@ -269,6 +269,23 @@ glances at one screen that's always right.*
    explicit choice — unchecked, the base stays live for serials the new
    config doesn't cover; overlaps surface as resolver conflicts.
 
+### Phase 7 — Procedure execution & as-run records ✅ done
+*Goal (from the competitive delta vs Boltline/Epsilon3/ION): procedures are
+evidence, not documents — the largest market-baseline gap.*
+
+1. Steps derive from the versioned procedure body (one line = one step, manual
+   numbering stripped) — no new authoring model, immutability via the existing
+   version chain.
+2. Executions bind a run to an exact procedure version; steps record strictly
+   in order with outcome (done / skipped / flagged), captured value, note, and
+   operator. Skip/flag require a note. The instruction text is snapshotted
+   into each record.
+3. Recording the last step completes the execution; aborts require a reason.
+   Completed/aborted executions are immutable as-run records.
+4. Run detail shows per-procedure as-run status (n/m steps, flagged count)
+   with start/reopen; executions require an in-progress run (record-and-warn
+   gate upstream). New step-by-step execution page per (run, procedure).
+
 ### Explicitly deferred (per concept freeze)
 Hard gating by risk class, CAD/PLM import, date effectivity, multi-site,
 rate production, auth/multi-user (keep free-text identity fields for v0, but

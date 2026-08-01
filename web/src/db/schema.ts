@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  integer,
   real,
   sqliteTable,
   text,
@@ -220,6 +221,42 @@ export const runs = sqliteTable("runs", {
   completedAt: text("completed_at"),
   notes: text("notes").notNull().default(""),
   createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// As-run procedure evidence (CONCEPT §10.4, evidence over documents): an
+// execution binds a run to an exact procedure version; each step record
+// snapshots the instruction text it was executed against.
+export const procedureExecutions = sqliteTable("procedure_executions", {
+  id: text("id").primaryKey(),
+  runId: text("run_id")
+    .notNull()
+    .references(() => runs.id),
+  procedureId: text("procedure_id")
+    .notNull()
+    .references(() => procedures.id),
+  status: text("status").notNull().default("in_progress"), // in_progress | complete | aborted
+  startedBy: text("started_by").notNull(),
+  startedAt: text("started_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  completedAt: text("completed_at"),
+  abortReason: text("abort_reason").notNull().default(""),
+});
+
+export const stepRecords = sqliteTable("step_records", {
+  id: text("id").primaryKey(),
+  executionId: text("execution_id")
+    .notNull()
+    .references(() => procedureExecutions.id),
+  stepIndex: integer("step_index").notNull(),
+  instruction: text("instruction").notNull(), // snapshot at execution time
+  outcome: text("outcome").notNull(), // done | skipped | flagged
+  value: text("value").notNull().default(""),
+  note: text("note").notNull().default(""),
+  recordedBy: text("recorded_by").notNull(),
+  recordedAt: text("recorded_at")
     .notNull()
     .default(sql`(datetime('now'))`),
 });

@@ -43,6 +43,12 @@ import {
   createTestDefinition,
   reviseProcedure,
 } from "./domain/procedures";
+import {
+  abortExecution,
+  recordStep,
+  startExecution,
+  stepOutcomes,
+} from "./domain/execution";
 
 // Note: a "use server" module may only export async functions, so the
 // initial state lives with the client form components.
@@ -482,6 +488,93 @@ export async function recordAsBuiltAction(
   if (!result.ok) return fail(result.error);
   revalidatePath(`/articles/${parsed.data.articleId}`);
   revalidatePath("/articles");
+  return { ok: true, error: "" };
+}
+
+const startExecutionSchema = z.object({
+  runId: nonEmpty,
+  procedureId: nonEmpty,
+  by: nonEmpty,
+});
+
+export async function startExecutionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = startExecutionSchema.safeParse({
+    runId: formData.get("runId"),
+    procedureId: formData.get("procedureId"),
+    by: formData.get("by"),
+  });
+  if (!parsed.success) return fail("Procedure and operator are required.");
+
+  const result = startExecution(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/runs/${parsed.data.runId}`);
+  redirect(`/runs/${parsed.data.runId}/execute/${result.executionId}`);
+}
+
+const recordStepSchema = z.object({
+  executionId: nonEmpty,
+  runId: nonEmpty,
+  stepIndex: z.coerce.number().int().min(0),
+  outcome: z.enum(stepOutcomes),
+  value: z.string().trim(),
+  note: z.string().trim(),
+  by: nonEmpty,
+});
+
+export async function recordStepAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = recordStepSchema.safeParse({
+    executionId: formData.get("executionId"),
+    runId: formData.get("runId"),
+    stepIndex: formData.get("stepIndex"),
+    outcome: formData.get("outcome"),
+    value: String(formData.get("value") ?? ""),
+    note: String(formData.get("note") ?? ""),
+    by: formData.get("by"),
+  });
+  if (!parsed.success) return fail("Step, outcome, and operator are required.");
+
+  const result = recordStep(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/runs/${parsed.data.runId}/execute/${parsed.data.executionId}`);
+  revalidatePath(`/runs/${parsed.data.runId}`);
+  return { ok: true, error: "" };
+}
+
+const abortExecutionSchema = z.object({
+  executionId: nonEmpty,
+  runId: nonEmpty,
+  by: nonEmpty,
+  reason: nonEmpty,
+});
+
+export async function abortExecutionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = abortExecutionSchema.safeParse({
+    executionId: formData.get("executionId"),
+    runId: formData.get("runId"),
+    by: formData.get("by"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) return fail("An abort reason and operator are required.");
+
+  const result = abortExecution(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/runs/${parsed.data.runId}/execute/${parsed.data.executionId}`);
+  revalidatePath(`/runs/${parsed.data.runId}`);
   return { ok: true, error: "" };
 }
 

@@ -2,15 +2,18 @@
 
 import { useActionState } from "react";
 import {
+  abortExecutionAction,
   acknowledgeRunGaps,
   approveReleaseAction,
   createRunAction,
   cutConfigFrom,
+  recordStepAction,
   recordTestResult,
   releaseConfig,
   requestReleaseAction,
   returnToDraftAction,
   runLifecycleAction,
+  startExecutionAction,
   waiveTest,
   type ActionState,
 } from "../lib/actions";
@@ -171,6 +174,128 @@ export function RunLifecycleForm({
         }
       >
         {transition === "start" ? "Start run" : "Complete run"}
+      </button>
+    </form>
+  );
+}
+
+export function StartExecutionForm({
+  runId,
+  procedureId,
+}: {
+  runId: string;
+  procedureId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    startExecutionAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="runId" value={runId} />
+      <input type="hidden" name="procedureId" value={procedureId} />
+      <input
+        name="by"
+        defaultValue="tech.lee"
+        className="w-28 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+      />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-xs text-[var(--bg0)] disabled:opacity-60"
+      >
+        Start execution
+      </button>
+      {state.error ? (
+        <span className="text-xs text-rose-700">{state.error}</span>
+      ) : null}
+    </form>
+  );
+}
+
+export function RecordStepForm({
+  runId,
+  executionId,
+  stepIndex,
+}: {
+  runId: string;
+  executionId: string;
+  stepIndex: number;
+}) {
+  const [state, formAction, pending] = useActionState(
+    recordStepAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input type="hidden" name="runId" value={runId} />
+      <input type="hidden" name="executionId" value={executionId} />
+      <input type="hidden" name="stepIndex" value={stepIndex} />
+      <div className="flex gap-2">
+        <select name="outcome" defaultValue="done" className={inputClass}>
+          <option value="done">done</option>
+          <option value="skipped">skipped</option>
+          <option value="flagged">flagged</option>
+        </select>
+        <input
+          name="value"
+          placeholder="Measured value (optional)"
+          className={inputClass}
+        />
+      </div>
+      <input
+        name="note"
+        placeholder="Note (required for skipped/flagged)"
+        className={inputClass}
+      />
+      <input name="by" defaultValue="tech.lee" className={inputClass} />
+      <ActionError state={state} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+      >
+        Record step {stepIndex + 1}
+      </button>
+    </form>
+  );
+}
+
+export function AbortExecutionForm({
+  runId,
+  executionId,
+}: {
+  runId: string;
+  executionId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    abortExecutionAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-2 space-y-2">
+      <input type="hidden" name="runId" value={runId} />
+      <input type="hidden" name="executionId" value={executionId} />
+      <div className="flex gap-2">
+        <input
+          name="reason"
+          required
+          placeholder="Abort reason"
+          className={inputClass}
+        />
+        <input
+          name="by"
+          defaultValue="tech.lee"
+          className={`w-32 ${inputClass}`}
+        />
+      </div>
+      <ActionError state={state} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md border border-rose-300 px-3 py-1.5 text-sm text-rose-700 disabled:opacity-60"
+      >
+        Abort execution
       </button>
     </form>
   );
