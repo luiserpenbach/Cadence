@@ -8,8 +8,14 @@ import { getDb } from "../db";
 import * as s from "../db/schema";
 import { id } from "./id";
 import { ensureAppData } from "./bootstrap";
-import { releaseConfiguration } from "./domain/release";
+import {
+  approveRelease,
+  releaseConfiguration,
+  requestRelease,
+  returnToDraft,
+} from "./domain/release";
 import { cutConfiguration } from "./domain/cut-config";
+import { cutInRevision } from "./domain/rev-cut-in";
 import { acknowledgeGaps } from "./domain/ack";
 import { createWaiver } from "./domain/waiver";
 import { completeRun, createRun, startRun } from "./domain/run";
@@ -29,6 +35,7 @@ import {
   removeEffectivityRow,
   removeProcedureLink,
   removeRequiredTest,
+  updateBomLine,
 } from "./domain/config-edit";
 import { recordAsBuilt } from "./domain/asbuilt";
 import {
@@ -36,12 +43,27 @@ import {
   createTestDefinition,
   reviseProcedure,
 } from "./domain/procedures";
+import {
+  abortExecution,
+  recordStep,
+  startExecution,
+  stepOutcomes,
+} from "./domain/execution";
+import {
+  addFileAttachment,
+  addLinkAttachment,
+  removeAttachment,
+} from "./domain/attachments";
+import path from "node:path";
+
+const uploadsDir = path.join(process.cwd(), "data", "uploads");
 
 // Note: a "use server" module may only export async functions, so the
 // initial state lives with the client form components.
 export type ActionState = {
   ok: boolean;
   error: string;
+  message?: string;
 };
 
 function fail(error: string): ActionState {
@@ -208,7 +230,6 @@ export async function runLifecycleAction(
 const releaseSchema = z.object({
   configId: nonEmpty,
   by: nonEmpty,
-  reviewer: z.string().trim().optional(),
 });
 
 export async function releaseConfig(
@@ -219,13 +240,13 @@ export async function releaseConfig(
   const parsed = releaseSchema.safeParse({
     configId: formData.get("configId"),
     by: formData.get("by"),
-    reviewer: formData.get("reviewer") ?? undefined,
   });
   if (!parsed.success) {
     return fail("Config and releaser are required.");
   }
+  const supersedeBase = formData.get("supersedeBase") === "on";
 
-  const result = releaseConfiguration(getDb(), parsed.data);
+  const result = releaseConfiguration(getDb(), { ...parsed.data, supersedeBase });
   if (!result.ok) return fail(result.error);
 
   revalidatePath(`/configs/${parsed.data.configId}`);
@@ -233,11 +254,104 @@ export async function releaseConfig(
   return { ok: true, error: "" };
 }
 
+export async function requestReleaseAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = releaseSchema.safeParse({
+    configId: formData.get("configId"),
+    by: formData.get("by"),
+  });
+  if (!parsed.success) return fail("Config and requester are required.");
+
+  const result = requestRelease(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/configs/${parsed.data.configId}`);
+  revalidatePath("/configs");
+  return { ok: true, error: "" };
+}
+
+const approveSchema = z.object({
+  configId: nonEmpty,
+  reviewer: nonEmpty,
+});
+
+export async function approveReleaseAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = approveSchema.safeParse({
+    configId: formData.get("configId"),
+    reviewer: formData.get("reviewer"),
+  });
+  if (!parsed.success) return fail("Reviewer name is required.");
+  const supersedeBase = formData.get("supersedeBase") === "on";
+
+  const result = approveRelease(getDb(), { ...parsed.data, supersedeBase });
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/configs/${parsed.data.configId}`);
+  revalidatePath("/configs");
+  return { ok: true, error: "" };
+}
+
+export async function returnToDraftAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const configId = String(formData.get("configId") ?? "");
+  if (!configId) return fail("Config is required.");
+
+  const result = returnToDraft(getDb(), { configId });
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/configs/${configId}`);
+  revalidatePath("/configs");
+  return { ok: true, error: "" };
+}
+
+const cutInSchema = z.object({
+  partRevisionId: nonEmpty,
+  riskClass: z.enum(s.riskClasses),
+});
+
+export async function cutInRevisionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = cutInSchema.safeParse({
+    partRevisionId: formData.get("partRevisionId"),
+    riskClass: formData.get("riskClass"),
+  });
+  if (!parsed.success) return fail("Part revision and risk class are required.");
+
+  const result = cutInRevision(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath("/configs");
+  revalidatePath("/catalog");
+  const summary = result.drafts
+    .map((d) => `${d.key} (from ${d.fromKey})`)
+    .join(", ");
+  return {
+    ok: true,
+    error: "",
+    message: `Created ${result.drafts.length} draft(s): ${summary}. Review effectivity and release from the Configs page.`,
+  };
+}
+
 const newPartSchema = z.object({
   partNumber: nonEmpty,
   name: nonEmpty,
   category: nonEmpty,
   revision: nonEmpty,
+  sourcing: z.enum(s.partSourcings),
+  kind: z.enum(s.partKinds),
 });
 
 export async function createPartAction(
@@ -250,6 +364,8 @@ export async function createPartAction(
     name: formData.get("name"),
     category: formData.get("category"),
     revision: formData.get("revision"),
+    sourcing: formData.get("sourcing"),
+    kind: formData.get("kind"),
   });
   if (!parsed.success) {
     return fail("Part number, name, category, and initial revision are required.");
@@ -258,6 +374,91 @@ export async function createPartAction(
   const result = createPart(getDb(), parsed.data);
   if (!result.ok) return fail(result.error);
   revalidatePath("/catalog");
+  return { ok: true, error: "" };
+}
+
+const attachmentTarget = z.object({
+  entityType: z.enum(s.attachmentEntities),
+  entityId: nonEmpty,
+  by: nonEmpty,
+});
+
+function attachmentPath(entityType: string, entityId: string) {
+  return entityType === "part" ? `/catalog/${entityId}` : `/configs/${entityId}`;
+}
+
+export async function addLinkAttachmentAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = attachmentTarget
+    .extend({ url: nonEmpty, label: z.string().trim() })
+    .safeParse({
+      entityType: formData.get("entityType"),
+      entityId: formData.get("entityId"),
+      by: formData.get("by"),
+      url: formData.get("url"),
+      label: String(formData.get("label") ?? ""),
+    });
+  if (!parsed.success) return fail("A URL and your name are required.");
+
+  const result = addLinkAttachment(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath(attachmentPath(parsed.data.entityType, parsed.data.entityId));
+  return { ok: true, error: "" };
+}
+
+export async function uploadFileAttachmentAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = attachmentTarget
+    .extend({ label: z.string().trim() })
+    .safeParse({
+      entityType: formData.get("entityType"),
+      entityId: formData.get("entityId"),
+      by: formData.get("by"),
+      label: String(formData.get("label") ?? ""),
+    });
+  if (!parsed.success) return fail("A file and your name are required.");
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return fail("Choose a file to upload.");
+  }
+
+  const result = addFileAttachment(
+    getDb(),
+    {
+      ...parsed.data,
+      fileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+      bytes: Buffer.from(await file.arrayBuffer()),
+    },
+    uploadsDir,
+  );
+  if (!result.ok) return fail(result.error);
+  revalidatePath(attachmentPath(parsed.data.entityType, parsed.data.entityId));
+  return { ok: true, error: "" };
+}
+
+export async function removeAttachmentAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const attachmentId = String(formData.get("attachmentId") ?? "");
+  const entityType = String(formData.get("entityType") ?? "");
+  const entityId = String(formData.get("entityId") ?? "");
+  if (!attachmentId) return fail("Attachment is required.");
+
+  const result = removeAttachment(getDb(), attachmentId, uploadsDir);
+  if (!result.ok) return fail(result.error);
+  if (entityType && entityId) {
+    revalidatePath(attachmentPath(entityType, entityId));
+  }
   return { ok: true, error: "" };
 }
 
@@ -387,6 +588,93 @@ export async function recordAsBuiltAction(
   return { ok: true, error: "" };
 }
 
+const startExecutionSchema = z.object({
+  runId: nonEmpty,
+  procedureId: nonEmpty,
+  by: nonEmpty,
+});
+
+export async function startExecutionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = startExecutionSchema.safeParse({
+    runId: formData.get("runId"),
+    procedureId: formData.get("procedureId"),
+    by: formData.get("by"),
+  });
+  if (!parsed.success) return fail("Procedure and operator are required.");
+
+  const result = startExecution(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/runs/${parsed.data.runId}`);
+  redirect(`/runs/${parsed.data.runId}/execute/${result.executionId}`);
+}
+
+const recordStepSchema = z.object({
+  executionId: nonEmpty,
+  runId: nonEmpty,
+  stepIndex: z.coerce.number().int().min(0),
+  outcome: z.enum(stepOutcomes),
+  value: z.string().trim(),
+  note: z.string().trim(),
+  by: nonEmpty,
+});
+
+export async function recordStepAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = recordStepSchema.safeParse({
+    executionId: formData.get("executionId"),
+    runId: formData.get("runId"),
+    stepIndex: formData.get("stepIndex"),
+    outcome: formData.get("outcome"),
+    value: String(formData.get("value") ?? ""),
+    note: String(formData.get("note") ?? ""),
+    by: formData.get("by"),
+  });
+  if (!parsed.success) return fail("Step, outcome, and operator are required.");
+
+  const result = recordStep(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/runs/${parsed.data.runId}/execute/${parsed.data.executionId}`);
+  revalidatePath(`/runs/${parsed.data.runId}`);
+  return { ok: true, error: "" };
+}
+
+const abortExecutionSchema = z.object({
+  executionId: nonEmpty,
+  runId: nonEmpty,
+  by: nonEmpty,
+  reason: nonEmpty,
+});
+
+export async function abortExecutionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = abortExecutionSchema.safeParse({
+    executionId: formData.get("executionId"),
+    runId: formData.get("runId"),
+    by: formData.get("by"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) return fail("An abort reason and operator are required.");
+
+  const result = abortExecution(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+
+  revalidatePath(`/runs/${parsed.data.runId}/execute/${parsed.data.executionId}`);
+  revalidatePath(`/runs/${parsed.data.runId}`);
+  return { ok: true, error: "" };
+}
+
 const newProcedureSchema = z.object({
   key: nonEmpty,
   title: nonEmpty,
@@ -471,6 +759,14 @@ const configEditSchema = z.discriminatedUnion("op", [
   }),
   z.object({ op: z.literal("remove_bom"), configId: nonEmpty, bomLineId: nonEmpty }),
   z.object({
+    op: z.literal("update_bom"),
+    configId: nonEmpty,
+    bomLineId: nonEmpty,
+    partRevisionId: nonEmpty,
+    qty: z.coerce.number().positive(),
+    findNumber: z.string().trim(),
+  }),
+  z.object({
     op: z.literal("add_test"),
     configId: nonEmpty,
     testDefinitionId: nonEmpty,
@@ -545,6 +841,8 @@ export async function configEditAction(
         return addBomLine(db, input);
       case "remove_bom":
         return removeBomLine(db, input);
+      case "update_bom":
+        return updateBomLine(db, input);
       case "add_test":
         return addRequiredTest(db, input);
       case "remove_test":

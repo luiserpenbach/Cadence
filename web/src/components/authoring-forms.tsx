@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import {
+  addLinkAttachmentAction,
   addPartRevisionAction,
   configEditAction,
   createArticleAction,
@@ -10,8 +11,11 @@ import {
   createProcedureAction,
   createStandAction,
   createTestDefinitionAction,
+  cutInRevisionAction,
   recordAsBuiltAction,
+  removeAttachmentAction,
   reviseProcedureAction,
+  uploadFileAttachmentAction,
   type ActionState,
 } from "../lib/actions";
 
@@ -29,6 +33,15 @@ function ActionError({ state }: { state: ActionState }) {
   return (
     <p className="rounded-md bg-rose-100 px-3 py-2 text-sm text-rose-950">
       {state.error}
+    </p>
+  );
+}
+
+function ActionMessage({ state }: { state: ActionState }) {
+  if (!state.ok || !state.message) return null;
+  return (
+    <p className="rounded-md bg-emerald-100 px-3 py-2 text-sm text-emerald-950">
+      {state.message}
     </p>
   );
 }
@@ -63,9 +76,136 @@ export function NewPartForm() {
           className={`w-24 ${inputClass}`}
         />
       </div>
+      <div className="flex gap-2">
+        <select name="sourcing" defaultValue="buy" className={inputClass}>
+          <option value="make">make</option>
+          <option value="buy">buy</option>
+          <option value="cots">cots</option>
+        </select>
+        <select name="kind" defaultValue="component" className={inputClass}>
+          <option value="component">component</option>
+          <option value="assembly">assembly</option>
+        </select>
+      </div>
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Create part
+      </button>
+    </form>
+  );
+}
+
+export function AttachmentForms({
+  entityType,
+  entityId,
+}: {
+  entityType: "part" | "configuration";
+  entityId: string;
+}) {
+  const [linkState, linkAction, linkPending] = useActionState(
+    addLinkAttachmentAction,
+    initialState,
+  );
+  const [fileState, fileAction, filePending] = useActionState(
+    uploadFileAttachmentAction,
+    initialState,
+  );
+  return (
+    <div className="mt-3 space-y-4">
+      <form action={linkAction} className="space-y-2">
+        <input type="hidden" name="entityType" value={entityType} />
+        <input type="hidden" name="entityId" value={entityId} />
+        <div className="flex gap-2">
+          <input
+            name="url"
+            required
+            placeholder="https://… (drawing, datasheet)"
+            className={inputClass}
+          />
+          <input
+            name="label"
+            placeholder="Label"
+            className={`w-36 ${inputClass}`}
+          />
+        </div>
+        <div className="flex gap-2">
+          <input
+            name="by"
+            defaultValue="m.chen"
+            className={`w-32 ${inputClass}`}
+          />
+          <button
+            type="submit"
+            disabled={linkPending}
+            className={subtleButtonClass}
+          >
+            Add link
+          </button>
+        </div>
+        <ActionError state={linkState} />
+      </form>
+
+      <form action={fileAction} className="space-y-2">
+        <input type="hidden" name="entityType" value={entityType} />
+        <input type="hidden" name="entityId" value={entityId} />
+        <input
+          type="file"
+          name="file"
+          required
+          className="block w-full text-sm file:mr-2 file:rounded-md file:border file:border-[var(--line)] file:bg-white file:px-3 file:py-1.5 file:text-sm"
+        />
+        <div className="flex gap-2">
+          <input
+            name="label"
+            placeholder="Label (optional)"
+            className={inputClass}
+          />
+          <input
+            name="by"
+            defaultValue="m.chen"
+            className={`w-32 ${inputClass}`}
+          />
+          <button
+            type="submit"
+            disabled={filePending}
+            className={subtleButtonClass}
+          >
+            Upload
+          </button>
+        </div>
+        <ActionError state={fileState} />
+      </form>
+    </div>
+  );
+}
+
+export function RemoveAttachmentButton({
+  attachmentId,
+  entityType,
+  entityId,
+}: {
+  attachmentId: string;
+  entityType: string;
+  entityId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    removeAttachmentAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="inline">
+      <input type="hidden" name="attachmentId" value={attachmentId} />
+      <input type="hidden" name="entityType" value={entityType} />
+      <input type="hidden" name="entityId" value={entityId} />
+      {state.error ? (
+        <span className="mr-1 text-xs text-rose-700">{state.error}</span>
+      ) : null}
+      <button
+        type="submit"
+        disabled={pending}
+        className="text-xs text-rose-700 underline-offset-2 hover:underline disabled:opacity-60"
+      >
+        remove
       </button>
     </form>
   );
@@ -334,6 +474,106 @@ export function NewTestDefForm() {
       <button type="submit" disabled={pending} className={buttonClass}>
         Create test definition
       </button>
+    </form>
+  );
+}
+
+// One-shot rev cut-in: pick the new revision, get drafts of every released
+// config that pinned an older rev of the same part.
+export function CutInRevisionForm({
+  partRevs,
+}: {
+  partRevs: Array<{ id: string; label: string }>;
+}) {
+  const [state, formAction, pending] = useActionState(
+    cutInRevisionAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <select name="partRevisionId" className={inputClass}>
+        {partRevs.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+      <select name="riskClass" defaultValue="R2" className={inputClass}>
+        {["R0", "R1", "R2", "R3"].map((r) => (
+          <option key={r} value={r}>
+            {r}
+          </option>
+        ))}
+      </select>
+      <ActionError state={state} />
+      <ActionMessage state={state} />
+      <button type="submit" disabled={pending} className={buttonClass}>
+        Cut in this revision
+      </button>
+    </form>
+  );
+}
+
+// Inline editor for a draft BoM line: swap revision, adjust qty/find in place.
+export function BomLineEditor({
+  configId,
+  bomLineId,
+  revOptions,
+  currentRevId,
+  qty,
+  findNumber,
+}: {
+  configId: string;
+  bomLineId: string;
+  revOptions: Array<{ id: string; label: string }>;
+  currentRevId: string;
+  qty: number;
+  findNumber: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    configEditAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-1.5">
+      <input type="hidden" name="op" value="update_bom" />
+      <input type="hidden" name="configId" value={configId} />
+      <input type="hidden" name="bomLineId" value={bomLineId} />
+      <select
+        name="partRevisionId"
+        defaultValue={currentRevId}
+        className="rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+      >
+        {revOptions.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.label}
+          </option>
+        ))}
+      </select>
+      <input
+        name="qty"
+        type="number"
+        step="any"
+        min="0"
+        defaultValue={qty}
+        className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+      />
+      <input
+        name="findNumber"
+        defaultValue={findNumber}
+        placeholder="find"
+        className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+      />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md border border-[var(--line)] px-2 py-1 text-xs disabled:opacity-60"
+      >
+        Save
+      </button>
+      {state.error ? (
+        <span className="text-xs text-rose-700">{state.error}</span>
+      ) : null}
     </form>
   );
 }

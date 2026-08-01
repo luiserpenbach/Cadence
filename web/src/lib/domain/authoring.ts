@@ -9,7 +9,14 @@ export type AuthoringResult<T = object> =
 
 export function createPart(
   db: Db,
-  input: { partNumber: string; name: string; category: string; revision: string },
+  input: {
+    partNumber: string;
+    name: string;
+    category: string;
+    revision: string;
+    sourcing?: string;
+    kind?: string;
+  },
 ): AuthoringResult<{ partId: string }> {
   const duplicate = db
     .select({ id: s.parts.id })
@@ -28,6 +35,8 @@ export function createPart(
         partNumber: input.partNumber,
         name: input.name,
         category: input.category,
+        sourcing: input.sourcing ?? "buy",
+        kind: input.kind ?? "component",
       })
       .run();
     tx.insert(s.partRevisions)

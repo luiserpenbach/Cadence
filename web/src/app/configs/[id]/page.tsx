@@ -3,13 +3,19 @@ import { notFound } from "next/navigation";
 import { AppShell, Badge, DataTable, Panel } from "../../../components/ui";
 import { ensureAppData } from "../../../lib/bootstrap";
 import { getConfigBundle } from "../../../lib/queries";
-import { ReleaseConfigForm } from "../../../components/forms";
+import {
+  ApproveReleaseForm,
+  ReleaseConfigForm,
+  RequestReleaseForm,
+} from "../../../components/forms";
 import {
   AddBomLineForm,
   AddEffectivityForm,
   AddLinkForm,
+  BomLineEditor,
   ConfigEditButton,
 } from "../../../components/authoring-forms";
+import { AttachmentsPanel } from "../../../components/attachments-panel";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { eq } from "drizzle-orm";
@@ -67,7 +73,15 @@ export default async function ConfigDetailPage({
         <Badge tone={config.kind === "stand" ? "accent" : "neutral"}>
           {config.kind}
         </Badge>
-        <Badge tone={config.status === "released" ? "ok" : "warn"}>
+        <Badge
+          tone={
+            config.status === "released"
+              ? "ok"
+              : config.status === "in_review"
+                ? "accent"
+                : "warn"
+          }
+        >
           {config.status}
         </Badge>
         <Badge tone={config.riskClass === "R3" ? "danger" : "neutral"}>
@@ -90,38 +104,53 @@ export default async function ConfigDetailPage({
             <DataTable
               headers={
                 isDraft
-                  ? ["Find", "Part", "Rev", "Qty", "Name", ""]
+                  ? ["Part", "Name", "Rev / Qty / Find", ""]
                   : ["Find", "Part", "Rev", "Qty", "Name"]
               }
               rows={bom
                 .slice()
                 .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
                 .map((l) => {
-                  const cells = [
-                    <span key="f" className="font-mono text-xs">
-                      {l.findNumber}
-                    </span>,
+                  if (!isDraft) {
+                    return [
+                      <span key="f" className="font-mono text-xs">
+                        {l.findNumber}
+                      </span>,
+                      <span key="p" className="font-mono text-xs">
+                        {l.partNumber}
+                      </span>,
+                      l.revision,
+                      String(l.qty),
+                      l.name,
+                    ];
+                  }
+                  const revOptions = partRevs
+                    .filter((p) => p.partNumber === l.partNumber)
+                    .map((p) => ({ id: p.id, label: `rev ${p.revision}` }));
+                  return [
                     <span key="p" className="font-mono text-xs">
                       {l.partNumber}
                     </span>,
-                    l.revision,
-                    String(l.qty),
                     l.name,
+                    <BomLineEditor
+                      key="e"
+                      configId={config.id}
+                      bomLineId={l.id}
+                      revOptions={revOptions}
+                      currentRevId={l.partRevisionId}
+                      qty={l.qty}
+                      findNumber={l.findNumber}
+                    />,
+                    <ConfigEditButton
+                      key="rm"
+                      label="remove"
+                      payload={{
+                        op: "remove_bom",
+                        configId: config.id,
+                        bomLineId: l.id,
+                      }}
+                    />,
                   ];
-                  if (isDraft) {
-                    cells.push(
-                      <ConfigEditButton
-                        key="rm"
-                        label="remove"
-                        payload={{
-                          op: "remove_bom",
-                          configId: config.id,
-                          bomLineId: l.id,
-                        }}
-                      />,
-                    );
-                  }
-                  return cells;
                 })}
             />
           </div>
@@ -196,22 +225,41 @@ export default async function ConfigDetailPage({
             ) : null}
           </Panel>
 
-          {config.status !== "released" ? (
+          {config.status === "draft" ? (
             <Panel>
               <h2 className="font-display text-xl">Release</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 {config.riskClass === "R3"
-                  ? "R3 requires reviewer acknowledgment."
+                  ? "R3: a second person must approve — request first."
                   : "Soft gate — tests may still be draft."}
               </p>
-              <ReleaseConfigForm
+              {config.riskClass === "R3" ? (
+                <RequestReleaseForm configId={config.id} />
+              ) : (
+                <ReleaseConfigForm
+                  configId={config.id}
+                  hasBase={Boolean(config.basedOnConfigId)}
+                />
+              )}
+            </Panel>
+          ) : config.status === "in_review" ? (
+            <Panel>
+              <h2 className="font-display text-xl">Awaiting review</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Requested by {config.releaseRequestedBy} ·{" "}
+                {config.releaseRequestedAt}
+              </p>
+              <ApproveReleaseForm
                 configId={config.id}
-                riskClass={config.riskClass}
+                requestedBy={config.releaseRequestedBy ?? ""}
+                hasBase={Boolean(config.basedOnConfigId)}
               />
             </Panel>
           ) : (
             <Panel>
-              <h2 className="font-display text-xl">Released</h2>
+              <h2 className="font-display text-xl">
+                {config.status === "superseded" ? "Superseded" : "Released"}
+              </h2>
               <p className="mt-2 text-sm text-[var(--muted)]">
                 by {config.releasedBy}
                 {config.reviewerAckBy
@@ -300,6 +348,17 @@ export default async function ConfigDetailPage({
           ) : null}
         </Panel>
       </div>
+
+      <Panel className="mt-5">
+        <h2 className="font-display text-xl">Attachments</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Reference material for this config — release evidence, reports,
+          drawings. Attachments are metadata, not pins.
+        </p>
+        <div className="mt-2">
+          <AttachmentsPanel entityType="configuration" entityId={config.id} />
+        </div>
+      </Panel>
 
       {config.notes ? (
         <Panel className="mt-5">

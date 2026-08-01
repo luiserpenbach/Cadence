@@ -2,12 +2,18 @@
 
 import { useActionState } from "react";
 import {
+  abortExecutionAction,
   acknowledgeRunGaps,
+  approveReleaseAction,
   createRunAction,
   cutConfigFrom,
+  recordStepAction,
   recordTestResult,
   releaseConfig,
+  requestReleaseAction,
+  returnToDraftAction,
   runLifecycleAction,
+  startExecutionAction,
   waiveTest,
   type ActionState,
 } from "../lib/actions";
@@ -173,6 +179,128 @@ export function RunLifecycleForm({
   );
 }
 
+export function StartExecutionForm({
+  runId,
+  procedureId,
+}: {
+  runId: string;
+  procedureId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    startExecutionAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="runId" value={runId} />
+      <input type="hidden" name="procedureId" value={procedureId} />
+      <input
+        name="by"
+        defaultValue="tech.lee"
+        className="w-28 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+      />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-xs text-[var(--bg0)] disabled:opacity-60"
+      >
+        Start execution
+      </button>
+      {state.error ? (
+        <span className="text-xs text-rose-700">{state.error}</span>
+      ) : null}
+    </form>
+  );
+}
+
+export function RecordStepForm({
+  runId,
+  executionId,
+  stepIndex,
+}: {
+  runId: string;
+  executionId: string;
+  stepIndex: number;
+}) {
+  const [state, formAction, pending] = useActionState(
+    recordStepAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input type="hidden" name="runId" value={runId} />
+      <input type="hidden" name="executionId" value={executionId} />
+      <input type="hidden" name="stepIndex" value={stepIndex} />
+      <div className="flex gap-2">
+        <select name="outcome" defaultValue="done" className={inputClass}>
+          <option value="done">done</option>
+          <option value="skipped">skipped</option>
+          <option value="flagged">flagged</option>
+        </select>
+        <input
+          name="value"
+          placeholder="Measured value (optional)"
+          className={inputClass}
+        />
+      </div>
+      <input
+        name="note"
+        placeholder="Note (required for skipped/flagged)"
+        className={inputClass}
+      />
+      <input name="by" defaultValue="tech.lee" className={inputClass} />
+      <ActionError state={state} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+      >
+        Record step {stepIndex + 1}
+      </button>
+    </form>
+  );
+}
+
+export function AbortExecutionForm({
+  runId,
+  executionId,
+}: {
+  runId: string;
+  executionId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    abortExecutionAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-2 space-y-2">
+      <input type="hidden" name="runId" value={runId} />
+      <input type="hidden" name="executionId" value={executionId} />
+      <div className="flex gap-2">
+        <input
+          name="reason"
+          required
+          placeholder="Abort reason"
+          className={inputClass}
+        />
+        <input
+          name="by"
+          defaultValue="tech.lee"
+          className={`w-32 ${inputClass}`}
+        />
+      </div>
+      <ActionError state={state} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md border border-rose-300 px-3 py-1.5 text-sm text-rose-700 disabled:opacity-60"
+      >
+        Abort execution
+      </button>
+    </form>
+  );
+}
+
 export function WaiverForm({
   runId,
   waivable,
@@ -215,12 +343,33 @@ export function WaiverForm({
   );
 }
 
+function SupersedeChoice({ hasBase }: { hasBase: boolean }) {
+  if (!hasBase) return null;
+  return (
+    <label className="flex items-start gap-2 text-sm">
+      <input
+        type="checkbox"
+        name="supersedeBase"
+        defaultChecked
+        className="mt-0.5"
+      />
+      <span>
+        Supersede the base config
+        <span className="block text-xs text-[var(--muted)]">
+          Uncheck for a partial cut-in — the base stays live for serials this
+          config doesn&apos;t cover. Keep effectivities from overlapping.
+        </span>
+      </span>
+    </label>
+  );
+}
+
 export function ReleaseConfigForm({
   configId,
-  riskClass,
+  hasBase,
 }: {
   configId: string;
-  riskClass: string;
+  hasBase: boolean;
 }) {
   const [state, formAction, pending] = useActionState(
     releaseConfig,
@@ -235,14 +384,7 @@ export function ReleaseConfigForm({
         defaultValue="m.chen"
         className={inputClass}
       />
-      {riskClass === "R3" ? (
-        <input
-          name="reviewer"
-          placeholder="Reviewer (not the releaser)"
-          required
-          className={inputClass}
-        />
-      ) : null}
+      <SupersedeChoice hasBase={hasBase} />
       <ActionError state={state} />
       <button
         type="submit"
@@ -252,6 +394,84 @@ export function ReleaseConfigForm({
         Release config
       </button>
     </form>
+  );
+}
+
+export function RequestReleaseForm({ configId }: { configId: string }) {
+  const [state, formAction, pending] = useActionState(
+    requestReleaseAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input type="hidden" name="configId" value={configId} />
+      <input
+        name="by"
+        placeholder="Requested by"
+        defaultValue="m.chen"
+        className={inputClass}
+      />
+      <ActionError state={state} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+      >
+        Request release
+      </button>
+    </form>
+  );
+}
+
+export function ApproveReleaseForm({
+  configId,
+  requestedBy,
+  hasBase,
+}: {
+  configId: string;
+  requestedBy: string;
+  hasBase: boolean;
+}) {
+  const [approveState, approveAction, approvePending] = useActionState(
+    approveReleaseAction,
+    initialState,
+  );
+  const [returnState, returnAction, returnPending] = useActionState(
+    returnToDraftAction,
+    initialState,
+  );
+  return (
+    <div className="mt-3 space-y-3">
+      <form action={approveAction} className="space-y-2">
+        <input type="hidden" name="configId" value={configId} />
+        <input
+          name="reviewer"
+          required
+          placeholder={`Reviewer (not ${requestedBy})`}
+          className={inputClass}
+        />
+        <SupersedeChoice hasBase={hasBase} />
+        <ActionError state={approveState} />
+        <button
+          type="submit"
+          disabled={approvePending}
+          className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+        >
+          Approve &amp; release
+        </button>
+      </form>
+      <form action={returnAction}>
+        <input type="hidden" name="configId" value={configId} />
+        <ActionError state={returnState} />
+        <button
+          type="submit"
+          disabled={returnPending}
+          className="text-sm text-[var(--muted)] underline-offset-2 hover:underline disabled:opacity-60"
+        >
+          Return to draft
+        </button>
+      </form>
+    </div>
   );
 }
 

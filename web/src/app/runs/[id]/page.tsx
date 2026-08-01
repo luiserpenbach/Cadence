@@ -10,8 +10,10 @@ import {
   AckGapsForm,
   RecordTestForm,
   RunLifecycleForm,
+  StartExecutionForm,
   WaiverForm,
 } from "../../../components/forms";
+import { listRunProcedureStatus } from "../../../lib/domain/execution";
 
 export const dynamic = "force-dynamic";
 
@@ -66,9 +68,31 @@ export default async function RunDetailPage({
 
   const missing = verification.gaps.filter((g) => g.status === "missing");
   const waivable = verification.gaps.filter((g) => g.status !== "waived");
+  const procedureStatus = listRunProcedureStatus(db, run.id);
 
   return (
     <AppShell title={run.key} subtitle={`Bound run on ${article.serial} @ ${stand.key}`}>
+      {articleConfig.status === "superseded" ||
+      standConfig.status === "superseded" ? (
+        <div className="mb-5 rounded-lg border border-amber-300 bg-amber-100 px-4 py-3 text-amber-950">
+          <div className="font-medium">
+            ⚠ This run is bound to a superseded config
+          </div>
+          <div className="mt-1 text-sm">
+            {articleConfig.status === "superseded"
+              ? `${articleConfig.key} has been superseded. `
+              : ""}
+            {standConfig.status === "superseded"
+              ? `${standConfig.key} has been superseded. `
+              : ""}
+            New runs will bind the current released config — check the{" "}
+            <Link className="underline" href="/change">
+              change impact
+            </Link>{" "}
+            before reusing results from this run.
+          </div>
+        </div>
+      ) : null}
       <div className="mb-5 flex flex-wrap gap-2">
         <Badge tone="accent">{run.status}</Badge>
         {verification.gaps.length ? (
@@ -221,6 +245,72 @@ export default async function RunDetailPage({
           </Panel>
         </div>
       </div>
+
+      <Panel className="mt-5">
+        <h2 className="font-display text-xl">Procedures (as-run)</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">
+          Procedures execute step by step against this run — each step is a
+          signed record, not a checkbox on a PDF.
+        </p>
+        <ul className="mt-3 space-y-2">
+          {procedureStatus.map((p) => (
+            <li
+              key={p.procedureId + p.source}
+              className="flex flex-wrap items-center gap-2 rounded-md bg-[var(--panel-strong)] px-3 py-2 text-sm"
+            >
+              <span className="font-mono text-xs text-[var(--accent)]">
+                {p.procedureKey} · v{p.version}
+              </span>
+              <span>{p.procedureTitle}</span>
+              <Badge tone="neutral">{p.source}</Badge>
+              {p.latest ? (
+                <>
+                  <Badge
+                    tone={
+                      p.latest.status === "complete"
+                        ? "ok"
+                        : p.latest.status === "aborted"
+                          ? "danger"
+                          : "accent"
+                    }
+                  >
+                    {p.latest.status} · {p.latest.recordedCount}/{p.stepCount}
+                  </Badge>
+                  {p.latest.flaggedCount > 0 ? (
+                    <Badge tone="danger">
+                      {p.latest.flaggedCount} flagged
+                    </Badge>
+                  ) : null}
+                  <Link
+                    className="text-xs underline"
+                    href={`/runs/${run.id}/execute/${p.latest.executionId}`}
+                  >
+                    open
+                  </Link>
+                  {p.latest.status !== "in_progress" &&
+                  run.status === "in_progress" ? (
+                    <StartExecutionForm
+                      runId={run.id}
+                      procedureId={p.procedureId}
+                    />
+                  ) : null}
+                </>
+              ) : run.status === "in_progress" ? (
+                <StartExecutionForm runId={run.id} procedureId={p.procedureId} />
+              ) : (
+                <span className="text-xs text-[var(--muted)]">
+                  start the run to execute
+                </span>
+              )}
+            </li>
+          ))}
+          {procedureStatus.length === 0 ? (
+            <li className="text-sm text-[var(--muted)]">
+              No procedures bound to this run&apos;s configs.
+            </li>
+          ) : null}
+        </ul>
+      </Panel>
 
       <Panel className="mt-5">
         <h2 className="font-display text-xl">Recorded results</h2>

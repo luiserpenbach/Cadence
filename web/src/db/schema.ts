@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  integer,
   real,
   sqliteTable,
   text,
@@ -12,8 +13,21 @@ export type RiskClass = (typeof riskClasses)[number];
 export const configKinds = ["article", "stand"] as const;
 export type ConfigKind = (typeof configKinds)[number];
 
-export const releaseStatuses = ["draft", "released", "superseded"] as const;
+// R3 configs pass through in_review: one person requests, a different
+// person approves — two actions, two timestamps, no self-review.
+export const releaseStatuses = [
+  "draft",
+  "in_review",
+  "released",
+  "superseded",
+] as const;
 export type ReleaseStatus = (typeof releaseStatuses)[number];
+
+export const partSourcings = ["make", "buy", "cots"] as const;
+export type PartSourcing = (typeof partSourcings)[number];
+
+export const partKinds = ["component", "assembly"] as const;
+export type PartKind = (typeof partKinds)[number];
 
 export const parts = sqliteTable(
   "parts",
@@ -23,6 +37,10 @@ export const parts = sqliteTable(
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
     category: text("category").notNull().default("hardware"),
+    // make | buy | cots
+    sourcing: text("sourcing").notNull().default("buy"),
+    // component | assembly (declared; part-to-part structure is post-v0)
+    kind: text("kind").notNull().default("component"),
     createdAt: text("created_at")
       .notNull()
       .default(sql`(datetime('now'))`),
@@ -89,6 +107,8 @@ export const configurations = sqliteTable(
     notes: text("notes").notNull().default(""),
     releasedAt: text("released_at"),
     releasedBy: text("released_by"),
+    releaseRequestedBy: text("release_requested_by"),
+    releaseRequestedAt: text("release_requested_at"),
     reviewerAckBy: text("reviewer_ack_by"),
     reviewerAckAt: text("reviewer_ack_at"),
     createdAt: text("created_at")
@@ -215,6 +235,42 @@ export const runs = sqliteTable("runs", {
     .default(sql`(datetime('now'))`),
 });
 
+// As-run procedure evidence (CONCEPT §10.4, evidence over documents): an
+// execution binds a run to an exact procedure version; each step record
+// snapshots the instruction text it was executed against.
+export const procedureExecutions = sqliteTable("procedure_executions", {
+  id: text("id").primaryKey(),
+  runId: text("run_id")
+    .notNull()
+    .references(() => runs.id),
+  procedureId: text("procedure_id")
+    .notNull()
+    .references(() => procedures.id),
+  status: text("status").notNull().default("in_progress"), // in_progress | complete | aborted
+  startedBy: text("started_by").notNull(),
+  startedAt: text("started_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  completedAt: text("completed_at"),
+  abortReason: text("abort_reason").notNull().default(""),
+});
+
+export const stepRecords = sqliteTable("step_records", {
+  id: text("id").primaryKey(),
+  executionId: text("execution_id")
+    .notNull()
+    .references(() => procedureExecutions.id),
+  stepIndex: integer("step_index").notNull(),
+  instruction: text("instruction").notNull(), // snapshot at execution time
+  outcome: text("outcome").notNull(), // done | skipped | flagged
+  value: text("value").notNull().default(""),
+  note: text("note").notNull().default(""),
+  recordedBy: text("recorded_by").notNull(),
+  recordedAt: text("recorded_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const testResults = sqliteTable("test_results", {
   id: text("id").primaryKey(),
   runId: text("run_id")
@@ -322,6 +378,26 @@ export const purchaseOrderLines = sqliteTable("purchase_order_lines", {
     .references(() => partRevisions.id),
   qty: real("qty").notNull().default(1),
   unitCost: real("unit_cost").notNull().default(0),
+});
+
+// Drawings, datasheets, reports — links or uploaded files, attached to a
+// part or a configuration. PDFs are attachments, not truth (CONCEPT §10.4).
+export const attachmentEntities = ["part", "configuration"] as const;
+export type AttachmentEntity = (typeof attachmentEntities)[number];
+
+export const attachments = sqliteTable("attachments", {
+  id: text("id").primaryKey(),
+  entityType: text("entity_type").notNull(), // part | configuration
+  entityId: text("entity_id").notNull(),
+  kind: text("kind").notNull(), // link | file
+  label: text("label").notNull(),
+  url: text("url").notNull().default(""), // for links
+  fileName: text("file_name").notNull().default(""), // for files (on disk)
+  mimeType: text("mime_type").notNull().default(""),
+  addedBy: text("added_by").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
 });
 
 export const partsRelations = relations(parts, ({ many }) => ({

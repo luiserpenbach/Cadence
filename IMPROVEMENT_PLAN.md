@@ -247,6 +247,76 @@ for everything after; 3–5 deliver the concept's "first win" loop end-to-end.
 3. Procedure versioning on edit (bump version, keep old row) so released
    configs keep pointing at the text they released with.
 
+### Phase 6 — Shop-floor efficiency pass ✅ done
+*Goal (from the floor-manager evaluation): RE spends 60 seconds; machinist
+glances at one screen that's always right.*
+
+1. One-shot rev cut-in on /catalog: pick the new part revision → drafts of
+   every released config pinning an older rev, with the pin swapped
+   (qty/find preserved, effectivity copied). Review and release as usual.
+2. In-place BoM line editing on draft configs (rev swap / qty / find),
+   replacing the remove-and-re-add dance.
+3. /floor: the machinist's single screen — pick (article, stand), see the
+   resolved recipe (BoM + procedures), a change banner with the BoM delta
+   when the config moved since the article's last run, and plain-language
+   blocks for no-config and conflict states.
+4. Change awareness: run detail banners when a run's config has been
+   superseded.
+5. Real two-person R3 release: draft → in_review (requester recorded) →
+   approve by a different named person (self-approval rejected server-side)
+   or return to draft. Both identities and timestamps on the record.
+6. Partial cut-in: releasing/approving offers "supersede base" as an
+   explicit choice — unchecked, the base stays live for serials the new
+   config doesn't cover; overlaps surface as resolver conflicts.
+
+### Phase 7 — Procedure execution & as-run records ✅ done
+*Goal (from the competitive delta vs Boltline/Epsilon3/ION): procedures are
+evidence, not documents — the largest market-baseline gap.*
+
+1. Steps derive from the versioned procedure body (one line = one step, manual
+   numbering stripped) — no new authoring model, immutability via the existing
+   version chain.
+2. Executions bind a run to an exact procedure version; steps record strictly
+   in order with outcome (done / skipped / flagged), captured value, note, and
+   operator. Skip/flag require a note. The instruction text is snapshotted
+   into each record.
+3. Recording the last step completes the execution; aborts require a reason.
+   Completed/aborted executions are immutable as-run records.
+4. Run detail shows per-procedure as-run status (n/m steps, flagged count)
+   with start/reopen; executions require an in-progress run (record-and-warn
+   gate upstream). New step-by-step execution page per (run, procedure).
+
+### Phase 8 — QR/serial genealogy ✅ done
+*Goal (competitive delta, Boltline's aBOM): one identifier in, full
+genealogy out — no schema changes, a pure read model over existing data.*
+
+1. /trace: scan or type an article serial, an installed part serial/lot, or
+   an inventory lot code (case-insensitive). Article hits show build history
+   (as-built with lot links) and test history (runs, configs, pass/gap
+   counts, as-run executions). Item hits show installed-on articles, stock
+   on hand, and the supplier trail via purchase orders for the part revision.
+2. QR labels (server-rendered SVG, `qrcode` dep) on trace results and article
+   pages, encoding the absolute trace URL — scan a unit's label on a phone
+   and land on its genealogy.
+3. Serial/lot values across the app link into /trace; article pages link to
+   full genealogy.
+
+### Phase 9 — Part metadata & attachments ✅ done
+*Goal (pre-testing gaps): make/buy sourcing, declared assembly kind, and
+link/file attachments.*
+
+1. Parts carry sourcing (make | buy | cots) and kind (component | assembly)
+   — declared attributes with catalog badges and creation-form selects.
+   Part-to-part structure (real assembly trees) remains a separate design
+   pass per hard problem #1.
+2. Attachments on parts and configurations: http(s) links (validated) and
+   uploaded files (stored under data/uploads by attachment id, sanitized
+   names, served via /files/[id] with correct content type; 20 MB action
+   body limit). Labels default sensibly; removal deletes row + file.
+3. New /catalog/[id] part detail page: revisions, where-used (configs
+   pinning any rev), attachments panel, add-revision form. Config detail
+   gains the same attachments panel.
+
 ### Explicitly deferred (per concept freeze)
 Hard gating by risk class, CAD/PLM import, date effectivity, multi-site,
 rate production, auth/multi-user (keep free-text identity fields for v0, but
