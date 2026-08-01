@@ -3,7 +3,11 @@ import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
-import { NewPartForm, NewRevisionForm } from "../../components/authoring-forms";
+import {
+  CutInRevisionForm,
+  NewPartForm,
+  NewRevisionForm,
+} from "../../components/authoring-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +36,18 @@ export default function CatalogPage() {
     .from(s.parts)
     .all()
     .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+  const partRevOptions = db
+    .select({
+      id: s.partRevisions.id,
+      partNumber: s.parts.partNumber,
+      revision: s.partRevisions.revision,
+    })
+    .from(s.partRevisions)
+    .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
+    .all()
+    .sort((a, b) =>
+      `${a.partNumber}@${a.revision}`.localeCompare(`${b.partNumber}@${b.revision}`),
+    );
 
   return (
     <AppShell
@@ -70,6 +86,20 @@ export default function CatalogPage() {
               Only when the artifact changes (drawing, material, interface).
             </p>
             <NewRevisionForm parts={parts} />
+          </Panel>
+          <Panel>
+            <h2 className="font-display text-xl">Cut in a revision</h2>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              One shot: drafts every released config pinning an older rev of
+              this part, with the pin swapped. Review effectivity, then
+              release.
+            </p>
+            <CutInRevisionForm
+              partRevs={partRevOptions.map((p) => ({
+                id: p.id,
+                label: `${p.partNumber} @ ${p.revision}`,
+              }))}
+            />
           </Panel>
         </div>
       </div>

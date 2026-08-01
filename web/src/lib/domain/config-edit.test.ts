@@ -17,6 +17,7 @@ import {
   removeBomLine,
   removeEffectivityRow,
   removeRequiredTest,
+  updateBomLine,
 } from "./config-edit";
 
 describe("draft config editing", () => {
@@ -85,6 +86,49 @@ describe("draft config editing", () => {
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.error).toContain("immutable");
     }
+  });
+
+  it("updates a BoM line in place (rev swap keeps qty/find editable)", () => {
+    addBomLine(db, {
+      configId: draftId,
+      partRevisionId: revId,
+      qty: 2,
+      findNumber: "10",
+    });
+    const line = db
+      .select()
+      .from(s.configBomLines)
+      .where(eq(s.configBomLines.configId, draftId))
+      .get()!;
+
+    const otherRev = makePart(db, "VLV-002").revId;
+    const result = updateBomLine(db, {
+      configId: draftId,
+      bomLineId: line.id,
+      partRevisionId: otherRev,
+      qty: 3,
+      findNumber: "15",
+    });
+    expect(result.ok).toBe(true);
+
+    const updated = db
+      .select()
+      .from(s.configBomLines)
+      .where(eq(s.configBomLines.id, line.id))
+      .get()!;
+    expect(updated.partRevisionId).toBe(otherRev);
+    expect(updated.qty).toBe(3);
+    expect(updated.findNumber).toBe("15");
+
+    expect(
+      updateBomLine(db, {
+        configId: releasedId,
+        bomLineId: line.id,
+        partRevisionId: otherRev,
+        qty: 1,
+        findNumber: "",
+      }).ok,
+    ).toBe(false);
   });
 
   it("deduplicates required tests", () => {

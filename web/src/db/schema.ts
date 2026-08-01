@@ -12,7 +12,14 @@ export type RiskClass = (typeof riskClasses)[number];
 export const configKinds = ["article", "stand"] as const;
 export type ConfigKind = (typeof configKinds)[number];
 
-export const releaseStatuses = ["draft", "released", "superseded"] as const;
+// R3 configs pass through in_review: one person requests, a different
+// person approves — two actions, two timestamps, no self-review.
+export const releaseStatuses = [
+  "draft",
+  "in_review",
+  "released",
+  "superseded",
+] as const;
 export type ReleaseStatus = (typeof releaseStatuses)[number];
 
 export const parts = sqliteTable(
@@ -89,6 +96,8 @@ export const configurations = sqliteTable(
     notes: text("notes").notNull().default(""),
     releasedAt: text("released_at"),
     releasedBy: text("released_by"),
+    releaseRequestedBy: text("release_requested_by"),
+    releaseRequestedAt: text("release_requested_at"),
     reviewerAckBy: text("reviewer_ack_by"),
     reviewerAckAt: text("reviewer_ack_at"),
     createdAt: text("created_at")

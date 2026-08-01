@@ -10,6 +10,7 @@ import {
   createProcedureAction,
   createStandAction,
   createTestDefinitionAction,
+  cutInRevisionAction,
   recordAsBuiltAction,
   reviseProcedureAction,
   type ActionState,
@@ -29,6 +30,15 @@ function ActionError({ state }: { state: ActionState }) {
   return (
     <p className="rounded-md bg-rose-100 px-3 py-2 text-sm text-rose-950">
       {state.error}
+    </p>
+  );
+}
+
+function ActionMessage({ state }: { state: ActionState }) {
+  if (!state.ok || !state.message) return null;
+  return (
+    <p className="rounded-md bg-emerald-100 px-3 py-2 text-sm text-emerald-950">
+      {state.message}
     </p>
   );
 }
@@ -334,6 +344,106 @@ export function NewTestDefForm() {
       <button type="submit" disabled={pending} className={buttonClass}>
         Create test definition
       </button>
+    </form>
+  );
+}
+
+// One-shot rev cut-in: pick the new revision, get drafts of every released
+// config that pinned an older rev of the same part.
+export function CutInRevisionForm({
+  partRevs,
+}: {
+  partRevs: Array<{ id: string; label: string }>;
+}) {
+  const [state, formAction, pending] = useActionState(
+    cutInRevisionAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <select name="partRevisionId" className={inputClass}>
+        {partRevs.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+      <select name="riskClass" defaultValue="R2" className={inputClass}>
+        {["R0", "R1", "R2", "R3"].map((r) => (
+          <option key={r} value={r}>
+            {r}
+          </option>
+        ))}
+      </select>
+      <ActionError state={state} />
+      <ActionMessage state={state} />
+      <button type="submit" disabled={pending} className={buttonClass}>
+        Cut in this revision
+      </button>
+    </form>
+  );
+}
+
+// Inline editor for a draft BoM line: swap revision, adjust qty/find in place.
+export function BomLineEditor({
+  configId,
+  bomLineId,
+  revOptions,
+  currentRevId,
+  qty,
+  findNumber,
+}: {
+  configId: string;
+  bomLineId: string;
+  revOptions: Array<{ id: string; label: string }>;
+  currentRevId: string;
+  qty: number;
+  findNumber: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    configEditAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-1.5">
+      <input type="hidden" name="op" value="update_bom" />
+      <input type="hidden" name="configId" value={configId} />
+      <input type="hidden" name="bomLineId" value={bomLineId} />
+      <select
+        name="partRevisionId"
+        defaultValue={currentRevId}
+        className="rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+      >
+        {revOptions.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.label}
+          </option>
+        ))}
+      </select>
+      <input
+        name="qty"
+        type="number"
+        step="any"
+        min="0"
+        defaultValue={qty}
+        className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+      />
+      <input
+        name="findNumber"
+        defaultValue={findNumber}
+        placeholder="find"
+        className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+      />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md border border-[var(--line)] px-2 py-1 text-xs disabled:opacity-60"
+      >
+        Save
+      </button>
+      {state.error ? (
+        <span className="text-xs text-rose-700">{state.error}</span>
+      ) : null}
     </form>
   );
 }

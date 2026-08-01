@@ -55,6 +55,50 @@ export function addBomLine(
   return { ok: true };
 }
 
+export function updateBomLine(
+  db: Db,
+  input: {
+    configId: string;
+    bomLineId: string;
+    partRevisionId: string;
+    qty: number;
+    findNumber: string;
+  },
+): EditResult {
+  const guard = requireDraft(db, input.configId);
+  if (!guard.ok) return guard;
+
+  const line = db
+    .select()
+    .from(s.configBomLines)
+    .where(
+      and(
+        eq(s.configBomLines.id, input.bomLineId),
+        eq(s.configBomLines.configId, input.configId),
+      ),
+    )
+    .get();
+  if (!line) return { ok: false, error: "BoM line not found." };
+
+  const rev = db
+    .select()
+    .from(s.partRevisions)
+    .where(eq(s.partRevisions.id, input.partRevisionId))
+    .get();
+  if (!rev) return { ok: false, error: "Part revision not found." };
+  if (input.qty <= 0) return { ok: false, error: "Quantity must be positive." };
+
+  db.update(s.configBomLines)
+    .set({
+      partRevisionId: input.partRevisionId,
+      qty: input.qty,
+      findNumber: input.findNumber,
+    })
+    .where(eq(s.configBomLines.id, input.bomLineId))
+    .run();
+  return { ok: true };
+}
+
 export function removeBomLine(
   db: Db,
   input: { configId: string; bomLineId: string },

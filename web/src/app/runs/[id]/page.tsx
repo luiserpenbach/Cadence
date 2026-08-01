@@ -69,6 +69,27 @@ export default async function RunDetailPage({
 
   return (
     <AppShell title={run.key} subtitle={`Bound run on ${article.serial} @ ${stand.key}`}>
+      {articleConfig.status === "superseded" ||
+      standConfig.status === "superseded" ? (
+        <div className="mb-5 rounded-lg border border-amber-300 bg-amber-100 px-4 py-3 text-amber-950">
+          <div className="font-medium">
+            ⚠ This run is bound to a superseded config
+          </div>
+          <div className="mt-1 text-sm">
+            {articleConfig.status === "superseded"
+              ? `${articleConfig.key} has been superseded. `
+              : ""}
+            {standConfig.status === "superseded"
+              ? `${standConfig.key} has been superseded. `
+              : ""}
+            New runs will bind the current released config — check the{" "}
+            <Link className="underline" href="/change">
+              change impact
+            </Link>{" "}
+            before reusing results from this run.
+          </div>
+        </div>
+      ) : null}
       <div className="mb-5 flex flex-wrap gap-2">
         <Badge tone="accent">{run.status}</Badge>
         {verification.gaps.length ? (

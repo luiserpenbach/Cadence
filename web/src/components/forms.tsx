@@ -3,10 +3,13 @@
 import { useActionState } from "react";
 import {
   acknowledgeRunGaps,
+  approveReleaseAction,
   createRunAction,
   cutConfigFrom,
   recordTestResult,
   releaseConfig,
+  requestReleaseAction,
+  returnToDraftAction,
   runLifecycleAction,
   waiveTest,
   type ActionState,
@@ -215,12 +218,33 @@ export function WaiverForm({
   );
 }
 
+function SupersedeChoice({ hasBase }: { hasBase: boolean }) {
+  if (!hasBase) return null;
+  return (
+    <label className="flex items-start gap-2 text-sm">
+      <input
+        type="checkbox"
+        name="supersedeBase"
+        defaultChecked
+        className="mt-0.5"
+      />
+      <span>
+        Supersede the base config
+        <span className="block text-xs text-[var(--muted)]">
+          Uncheck for a partial cut-in — the base stays live for serials this
+          config doesn&apos;t cover. Keep effectivities from overlapping.
+        </span>
+      </span>
+    </label>
+  );
+}
+
 export function ReleaseConfigForm({
   configId,
-  riskClass,
+  hasBase,
 }: {
   configId: string;
-  riskClass: string;
+  hasBase: boolean;
 }) {
   const [state, formAction, pending] = useActionState(
     releaseConfig,
@@ -235,14 +259,7 @@ export function ReleaseConfigForm({
         defaultValue="m.chen"
         className={inputClass}
       />
-      {riskClass === "R3" ? (
-        <input
-          name="reviewer"
-          placeholder="Reviewer (not the releaser)"
-          required
-          className={inputClass}
-        />
-      ) : null}
+      <SupersedeChoice hasBase={hasBase} />
       <ActionError state={state} />
       <button
         type="submit"
@@ -252,6 +269,84 @@ export function ReleaseConfigForm({
         Release config
       </button>
     </form>
+  );
+}
+
+export function RequestReleaseForm({ configId }: { configId: string }) {
+  const [state, formAction, pending] = useActionState(
+    requestReleaseAction,
+    initialState,
+  );
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input type="hidden" name="configId" value={configId} />
+      <input
+        name="by"
+        placeholder="Requested by"
+        defaultValue="m.chen"
+        className={inputClass}
+      />
+      <ActionError state={state} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+      >
+        Request release
+      </button>
+    </form>
+  );
+}
+
+export function ApproveReleaseForm({
+  configId,
+  requestedBy,
+  hasBase,
+}: {
+  configId: string;
+  requestedBy: string;
+  hasBase: boolean;
+}) {
+  const [approveState, approveAction, approvePending] = useActionState(
+    approveReleaseAction,
+    initialState,
+  );
+  const [returnState, returnAction, returnPending] = useActionState(
+    returnToDraftAction,
+    initialState,
+  );
+  return (
+    <div className="mt-3 space-y-3">
+      <form action={approveAction} className="space-y-2">
+        <input type="hidden" name="configId" value={configId} />
+        <input
+          name="reviewer"
+          required
+          placeholder={`Reviewer (not ${requestedBy})`}
+          className={inputClass}
+        />
+        <SupersedeChoice hasBase={hasBase} />
+        <ActionError state={approveState} />
+        <button
+          type="submit"
+          disabled={approvePending}
+          className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+        >
+          Approve &amp; release
+        </button>
+      </form>
+      <form action={returnAction}>
+        <input type="hidden" name="configId" value={configId} />
+        <ActionError state={returnState} />
+        <button
+          type="submit"
+          disabled={returnPending}
+          className="text-sm text-[var(--muted)] underline-offset-2 hover:underline disabled:opacity-60"
+        >
+          Return to draft
+        </button>
+      </form>
+    </div>
   );
 }
 

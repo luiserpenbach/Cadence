@@ -247,6 +247,28 @@ for everything after; 3–5 deliver the concept's "first win" loop end-to-end.
 3. Procedure versioning on edit (bump version, keep old row) so released
    configs keep pointing at the text they released with.
 
+### Phase 6 — Shop-floor efficiency pass ✅ done
+*Goal (from the floor-manager evaluation): RE spends 60 seconds; machinist
+glances at one screen that's always right.*
+
+1. One-shot rev cut-in on /catalog: pick the new part revision → drafts of
+   every released config pinning an older rev, with the pin swapped
+   (qty/find preserved, effectivity copied). Review and release as usual.
+2. In-place BoM line editing on draft configs (rev swap / qty / find),
+   replacing the remove-and-re-add dance.
+3. /floor: the machinist's single screen — pick (article, stand), see the
+   resolved recipe (BoM + procedures), a change banner with the BoM delta
+   when the config moved since the article's last run, and plain-language
+   blocks for no-config and conflict states.
+4. Change awareness: run detail banners when a run's config has been
+   superseded.
+5. Real two-person R3 release: draft → in_review (requester recorded) →
+   approve by a different named person (self-approval rejected server-side)
+   or return to draft. Both identities and timestamps on the record.
+6. Partial cut-in: releasing/approving offers "supersede base" as an
+   explicit choice — unchecked, the base stays live for serials the new
+   config doesn't cover; overlaps surface as resolver conflicts.
+
 ### Explicitly deferred (per concept freeze)
 Hard gating by risk class, CAD/PLM import, date effectivity, multi-site,
 rate production, auth/multi-user (keep free-text identity fields for v0, but
