@@ -2,8 +2,8 @@ import { eq } from "drizzle-orm";
 import type { Db } from "../../db";
 import * as s from "../../db/schema";
 import { id } from "../id";
-import { addToLot, createLot, stockByRevision } from "./inventory";
-import { getConfigBom } from "../impact";
+import { addToLot, createLot } from "./inventory";
+import { shortagesForConfig } from "../impact";
 import { configCoversArticle } from "./effectivity";
 
 export type ProcResult<T = object> =
@@ -201,16 +201,7 @@ export function openPoForShortages(
   const articles = db.select().from(s.articles).all();
   const covered = articles.filter((a) => configCoversArticle(db, config.id, a));
   const kitCount = input.kitCount ?? Math.max(covered.length, 1);
-  const bom = getConfigBom(config.id);
-  const stock = stockByRevision(db);
-
-  const shorts: Array<{ partRevisionId: string; qty: number }> = [];
-  for (const line of bom) {
-    const onHand = stock.get(line.partRevisionId)?.onHand ?? 0;
-    const needed = line.qty * kitCount;
-    const gap = needed - onHand;
-    if (gap > 0) shorts.push({ partRevisionId: line.partRevisionId, qty: gap });
-  }
+  const shorts = shortagesForConfig(config.id, kitCount).filter((row) => row.short > 0);
   if (shorts.length === 0) {
     return { ok: false, error: "No shortages to order for this config." };
   }
@@ -227,7 +218,7 @@ export function openPoForShortages(
     const added = addPurchaseOrderLine(db, {
       poId: created.poId,
       partRevisionId: short.partRevisionId,
-      qty: short.qty,
+      qty: short.short,
       unitCost: 0,
     });
     if (!added.ok) return added;

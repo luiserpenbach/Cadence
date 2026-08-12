@@ -211,21 +211,31 @@ export default async function FloorPage({
             </h2>
             <div className="mt-3">
               <DataTable
-                headers={["Find", "Part", "Rev", "Qty", "On hand", "Name"]}
+                headers={["Find", "Part", "Rev", "Qty", "Avail", "Name"]}
                 rows={[...articleBundle.bom]
                   .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
-                  .map((l) => [
-                    <span key="f" className="font-mono text-xs">
-                      {l.findNumber}
-                    </span>,
-                    <span key="p" className="font-mono text-xs">
-                      {l.partNumber}
-                    </span>,
-                    l.revision,
-                    String(l.qty),
-                    String(stock.get(l.partRevisionId)?.onHand ?? 0),
-                    l.name,
-                  ])}
+                  .map((l) => {
+                    const avail = stock.get(l.partRevisionId)?.available ?? 0;
+                    const short = avail < l.qty;
+                    return [
+                      <span key="f" className="font-mono text-xs">
+                        {l.findNumber}
+                      </span>,
+                      <span key="p" className="font-mono text-xs">
+                        {l.partNumber}
+                      </span>,
+                      l.revision,
+                      String(l.qty),
+                      <span
+                        key="a"
+                        className={short ? "font-medium text-rose-800" : undefined}
+                      >
+                        {avail}
+                        {short ? " short" : ""}
+                      </span>,
+                      l.name,
+                    ];
+                  })}
               />
             </div>
           </Panel>
@@ -277,21 +287,31 @@ export default async function FloorPage({
           <div className="mt-3">
             <DataTable
               compact
-              headers={["Find", "Part", "Rev", "Qty", "On hand", "Name"]}
+              headers={["Find", "Part", "Rev", "Qty", "Avail", "Name"]}
               rows={[...standBundle.bom]
                 .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
-                .map((l) => [
-                  <span key="f" className="font-mono text-xs">
-                    {l.findNumber}
-                  </span>,
-                  <span key="p" className="font-mono text-xs">
-                    {l.partNumber}
-                  </span>,
-                  l.revision,
-                  String(l.qty),
-                  String(stock.get(l.partRevisionId)?.onHand ?? 0),
-                  l.name,
-                ])}
+                .map((l) => {
+                  const avail = stock.get(l.partRevisionId)?.available ?? 0;
+                  const short = avail < l.qty;
+                  return [
+                    <span key="f" className="font-mono text-xs">
+                      {l.findNumber}
+                    </span>,
+                    <span key="p" className="font-mono text-xs">
+                      {l.partNumber}
+                    </span>,
+                    l.revision,
+                    String(l.qty),
+                    <span
+                      key="a"
+                      className={short ? "font-medium text-rose-800" : undefined}
+                    >
+                      {avail}
+                      {short ? " short" : ""}
+                    </span>,
+                    l.name,
+                  ];
+                })}
             />
           </div>
         </Panel>

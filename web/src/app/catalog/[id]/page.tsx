@@ -80,7 +80,12 @@ export default async function PartDetailPage({
                 </Badge>,
                 r.status,
                 r.notes || "—",
-                String(stock.get(r.id)?.onHand ?? 0),
+                <span key="oh">
+                  {stock.get(r.id)?.onHand ?? 0}
+                  {stock.get(r.id)?.reserved
+                    ? ` (${stock.get(r.id)?.reserved} reserved)`
+                    : ""}
+                </span>,
                 <span key="c" className="text-xs text-[var(--muted)]">
                   {r.createdAt}
                 </span>,

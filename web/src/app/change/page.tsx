@@ -202,7 +202,9 @@ export default async function ChangePage({
           <h2 className="font-display text-xl">Inventory shortages</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Demand is {impact.kitCount} kit{impact.kitCount === 1 ? "" : "s"} of{" "}
-            {to.key} (articles covered by the new config, minimum 1).
+            {to.key} (articles covered by the new config, minimum 1). Available
+            is on-hand minus kit reservations; inbound POs count toward covering
+            the gap.
           </p>
           {impact.inventoryShortages.length === 0 ? (
             <p className="mt-2 text-sm text-[var(--muted)]">
@@ -213,13 +215,14 @@ export default async function ChangePage({
             <>
               <DataTable
                 compact
-                headers={["Part", "Rev", "Need", "On hand", "Inbound", "Short"]}
+                headers={["Part", "Rev", "Need", "Avail", "On hand", "Inbound", "Short"]}
                 rows={impact.inventoryShortages.map((row) => [
                   <span key="p" className="font-mono text-xs">
                     {row.partNumber}
                   </span>,
                   row.revision,
                   String(row.needed),
+                  String(row.available),
                   String(row.onHand),
                   String(row.inbound),
                   String(row.short),

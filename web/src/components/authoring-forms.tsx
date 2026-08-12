@@ -18,7 +18,7 @@ import {
   uploadFileAttachmentAction,
   type ActionState,
 } from "../lib/actions";
-import { PartRevPicker } from "./pickers";
+import { PartRevPicker, useRefreshOnOk } from "./pickers";
 
 const initialState: ActionState = { ok: false, error: "" };
 
@@ -349,6 +349,7 @@ export function AsBuiltForm({
     recordAsBuiltAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="articleId" value={articleId} />
@@ -537,6 +538,7 @@ export function BomLineEditor({
     configEditAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-1.5">
       <input type="hidden" name="op" value="update_bom" />
@@ -563,6 +565,7 @@ export function BomLineEditor({
       />
       <input
         name="findNumber"
+        required
         defaultValue={findNumber}
         placeholder="find"
         className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
@@ -631,6 +634,7 @@ export function AddAlternateForm({
     configEditAction,
     initialState,
   );
+  useRefreshOnOk(state);
   if (lines.length === 0) return null;
   return (
     <form action={formAction} className="mt-3 space-y-2">
@@ -671,6 +675,7 @@ export function AddBomLineForm({
     configEditAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="op" value="add_bom" />
@@ -687,6 +692,7 @@ export function AddBomLineForm({
         />
         <input
           name="findNumber"
+          required
           placeholder="Find no."
           className={`w-28 ${inputClass}`}
         />

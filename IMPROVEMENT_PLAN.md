@@ -331,9 +331,13 @@ BoM authoring that scales past the demo.*
 4. Proto kits: pull from a released config, allocate lots (pinned rev or
    allowed alternate), issue consumes reserved stock and stamps as-built.
 5. As-built consume/reverse against matching lot codes.
-6. BoM authoring: in-place part swap, unique find numbers, line notes,
+6. BoM authoring: in-place part swap, **required unique find numbers**, line notes,
    allowed alternates, CSV import/export, catalog search + group-by-part,
    editable part metadata, on-hand on Floor / catalog / part detail.
+7. Production-ready cage loop: shortage uses **available** (on-hand − reserved)
+   plus inbound POs; kits can allocate remaining / unallocate; inventory search
+   and “held by” kit links; Floor highlights pins that are short; as-built
+   picker prefers covering-config pins.
 
 ### Explicitly deferred (per concept freeze)
 Hard gating by risk class, CAD/PLM import, date effectivity, multi-site,

@@ -21,6 +21,7 @@ import { AttachmentsPanel } from "../../../components/attachments-panel";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { eq } from "drizzle-orm";
+import { stockByRevision } from "../../../lib/domain/inventory";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,7 @@ export default async function ConfigDetailPage({
   const allTestDefs = isDraft ? db.select().from(s.testDefinitions).all() : [];
   const allProcedures = isDraft ? db.select().from(s.procedures).all() : [];
   const allArticles = isDraft ? db.select().from(s.articles).all() : [];
+  const stock = stockByRevision(db);
 
   return (
     <AppShell
@@ -123,7 +125,7 @@ export default async function ConfigDetailPage({
               headers={
                 isDraft
                   ? ["Find / Part", "Name", "Rev / Qty / Notes", ""]
-                  : ["Find", "Part", "Rev", "Qty", "Name", "Notes"]
+                  : ["Find", "Part", "Rev", "Qty", "Avail", "Name", "Notes"]
               }
               rows={bom
                 .slice()
@@ -140,6 +142,7 @@ export default async function ConfigDetailPage({
                       </span>,
                       l.revision,
                       String(l.qty),
+                      String(stock.get(l.partRevisionId)?.available ?? 0),
                       l.name,
                       <span key="n" className="text-[var(--muted)]">
                         {l.notes || "—"}

@@ -163,19 +163,52 @@ export function getDefaultDelta(): {
   return { from, to };
 }
 
+export type ShortageRow = {
+  partRevisionId: string;
+  partNumber: string;
+  revision: string;
+  needed: number;
+  onHand: number;
+  available: number;
+  inbound: number;
+  short: number;
+};
+
+export function shortagesForConfig(
+  configId: string,
+  kitCount: number,
+): ShortageRow[] {
+  const db = getDb();
+  const bom = getConfigBom(configId);
+  const stock = stockByRevision(db);
+  const inbound = inboundByRevision(db);
+  const rows: ShortageRow[] = [];
+  for (const line of bom) {
+    const summary = stock.get(line.partRevisionId);
+    const onHand = summary?.onHand ?? 0;
+    const available = summary?.available ?? 0;
+    const inboundQty = inbound.get(line.partRevisionId) ?? 0;
+    const needed = line.qty * kitCount;
+    rows.push({
+      partRevisionId: line.partRevisionId,
+      partNumber: line.partNumber,
+      revision: line.revision,
+      needed,
+      onHand,
+      available,
+      inbound: inboundQty,
+      short: Math.max(0, needed - available - inboundQty),
+    });
+  }
+  return rows;
+}
+
 export type ImpactReport = {
   from: typeof s.configurations.$inferSelect;
   to: typeof s.configurations.$inferSelect;
   bomDeltas: BomDelta[];
   testDiff: ReturnType<typeof diffRequiredTests>;
-  inventoryShortages: Array<{
-    partNumber: string;
-    revision: string;
-    needed: number;
-    onHand: number;
-    inbound: number;
-    short: number;
-  }>;
+  inventoryShortages: ShortageRow[];
   kitCount: number;
   articlesOnPrior: Array<{ serial: string; name: string }>;
   staleTestHint: string;
@@ -201,31 +234,14 @@ export function buildImpactReport(
   const bomDeltas = diffBom(fromConfigId, toConfigId);
   const testDiff = diffRequiredTests(fromConfigId, toConfigId);
 
-  const toBom = getConfigBom(toConfigId);
   const articles = db.select().from(s.articles).all();
   const kitCount = Math.max(
     articles.filter((a) => configCoversArticle(db, toConfigId, a)).length,
     1,
   );
-  const stock = stockByRevision(db);
-  const inbound = inboundByRevision(db);
-  const inventoryShortages = [];
-  for (const line of toBom) {
-    const onHand = stock.get(line.partRevisionId)?.onHand ?? 0;
-    const inboundQty = inbound.get(line.partRevisionId) ?? 0;
-    const needed = line.qty * kitCount;
-    const short = Math.max(0, needed - onHand - inboundQty);
-    if (short > 0 || onHand + inboundQty < needed) {
-      inventoryShortages.push({
-        partNumber: line.partNumber,
-        revision: line.revision,
-        needed,
-        onHand,
-        inbound: inboundQty,
-        short,
-      });
-    }
-  }
+  const inventoryShortages = shortagesForConfig(toConfigId, kitCount).filter(
+    (row) => row.short > 0,
+  );
 
   const articlesOnPrior = articles
     .filter(

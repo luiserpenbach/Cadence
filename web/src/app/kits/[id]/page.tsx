@@ -9,6 +9,7 @@ import { availableQty } from "../../../lib/domain/inventory";
 import {
   AllocateKitLineForm,
   KitLifecycleButtons,
+  UnallocateKitLineForm,
 } from "../../../components/inventory-forms";
 
 export const dynamic = "force-dynamic";
@@ -132,13 +133,17 @@ export default async function KitDetailPage({
                   l.revision,
                   String(l.qty),
                   current ? (
-                    <Link
-                      key="lot"
-                      className="font-mono text-xs underline"
-                      href={`/trace?q=${encodeURIComponent(current.lotCode)}`}
-                    >
-                      {current.lotCode}
-                    </Link>
+                    <span key="lot">
+                      <Link
+                        className="font-mono text-xs underline"
+                        href={`/trace?q=${encodeURIComponent(current.lotCode)}`}
+                      >
+                        {current.lotCode}
+                      </Link>{" "}
+                      {kit.status !== "issued" && kit.status !== "cancelled" ? (
+                        <UnallocateKitLineForm kitId={kit.id} kitLineId={l.id} />
+                      ) : null}
+                    </span>
                   ) : (
                     "—"
                   ),

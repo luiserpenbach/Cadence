@@ -67,9 +67,11 @@ import {
 } from "./domain/procurement";
 import {
   allocateKitLine,
+  allocateRemaining,
   cancelKit,
   createKit,
   issueKit,
+  unallocateKitLine,
 } from "./domain/kits";
 import { importBomCsv } from "./domain/bom-csv";
 import path from "node:path";
@@ -1198,6 +1200,55 @@ export async function allocateKitLineAction(
   revalidatePath(`/kits/${parsed.data.kitId}`);
   revalidatePath("/inventory");
   return { ok: true, error: "" };
+}
+
+export async function unallocateKitLineAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      kitLineId: nonEmpty,
+      by: nonEmpty,
+      kitId: nonEmpty,
+    })
+    .safeParse({
+      kitLineId: formData.get("kitLineId"),
+      by: formData.get("by"),
+      kitId: formData.get("kitId"),
+    });
+  if (!parsed.success) return fail("Your name is required to unallocate.");
+  const result = unallocateKitLine(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath(`/kits/${parsed.data.kitId}`);
+  revalidatePath("/inventory");
+  return { ok: true, error: "" };
+}
+
+export async function allocateRemainingAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({ kitId: nonEmpty, by: nonEmpty })
+    .safeParse({
+      kitId: formData.get("kitId"),
+      by: formData.get("by"),
+    });
+  if (!parsed.success) return fail("Your name is required to allocate.");
+  const result = allocateRemaining(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath(`/kits/${parsed.data.kitId}`);
+  revalidatePath("/inventory");
+  const skipped =
+    result.skipped > 0 ? ` (${result.skipped} line(s) still short)` : "";
+  return {
+    ok: true,
+    error: "",
+    message: `Allocated ${result.allocated} line(s)${skipped}.`,
+  };
 }
 
 export async function issueKitAction(

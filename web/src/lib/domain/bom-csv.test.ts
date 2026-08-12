@@ -24,6 +24,14 @@ describe("BoM CSV", () => {
     expect(parseBomCsv("find,part,rev,qty\n10,VLV,A,nope").ok).toBe(false);
   });
 
+  it("rejects a missing find number", () => {
+    expect(parseBomCsv("part,rev,qty\nVLV-001,A,1").ok).toBe(false);
+    expect(parseBomCsv("find,part,rev,qty\n,VLV-001,A,1").ok).toBe(false);
+    expect(
+      parseBomCsv("find,part,rev,qty\n10,VLV-001,A,1\n10,ORF-070,A,1").ok,
+    ).toBe(false);
+  });
+
   it("imports by find number onto a draft", () => {
     const db: Db = createTestDb();
     const valve = makePart(db, "VLV-001", "A");

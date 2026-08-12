@@ -9,8 +9,14 @@ import { AdjustLotForm, CreateLotForm } from "../../components/inventory-forms";
 
 export const dynamic = "force-dynamic";
 
-export default function InventoryPage() {
+export default async function InventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   ensureAppData();
+  const params = await searchParams;
+  const q = (typeof params.q === "string" ? params.q : "").trim().toLowerCase();
   const db = getDb();
   const rows = db
     .select({
@@ -34,6 +40,33 @@ export default function InventoryPage() {
     .sort((a, b) =>
       `${a.partNumber}@${a.revision}`.localeCompare(`${b.partNumber}@${b.revision}`),
     );
+
+  const held = db
+    .select({
+      lotId: s.kitLines.lotId,
+      kitKey: s.kits.key,
+      kitId: s.kits.id,
+      status: s.kits.status,
+    })
+    .from(s.kitLines)
+    .innerJoin(s.kits, eq(s.kitLines.kitId, s.kits.id))
+    .all()
+    .filter((h) => h.lotId && h.status !== "cancelled" && h.status !== "issued");
+  const heldByLot = new Map<string, typeof held>();
+  for (const h of held) {
+    if (!h.lotId) continue;
+    const list = heldByLot.get(h.lotId) ?? [];
+    list.push(h);
+    heldByLot.set(h.lotId, list);
+  }
+
+  const filtered = q
+    ? rows.filter((r) =>
+        `${r.partNumber} ${r.revision} ${r.lotCode} ${r.location} ${r.name}`
+          .toLowerCase()
+          .includes(q),
+      )
+    : rows;
 
   const movements = db
     .select()
@@ -61,10 +94,24 @@ export default function InventoryPage() {
     >
       <div className="grid gap-5 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
+          <form method="get" className="mb-4 flex gap-2">
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="Search part, lot, location…"
+              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
+            >
+              Search
+            </button>
+          </form>
           <DataTable
             empty="No lots yet — create one or receive a PO."
-            headers={["Part", "Rev", "On hand", "Reserved", "Avail", "Lot", "Location"]}
-            rows={rows.map((r) => [
+            headers={["Part", "Rev", "On hand", "Reserved", "Avail", "Lot", "Held by", "Location"]}
+            rows={filtered.map((r) => [
               <span key="p" className="font-mono text-xs">
                 {r.partNumber}
               </span>,
@@ -79,6 +126,14 @@ export default function InventoryPage() {
               >
                 {r.lotCode}
               </Link>,
+              <span key="h" className="text-xs">
+                {(heldByLot.get(r.id) ?? []).map((h) => (
+                  <Link key={h.kitId} className="mr-1 underline" href={`/kits/${h.kitId}`}>
+                    {h.kitKey}
+                  </Link>
+                ))}
+                {(heldByLot.get(r.id) ?? []).length === 0 ? "—" : null}
+              </span>,
               r.location,
             ])}
           />

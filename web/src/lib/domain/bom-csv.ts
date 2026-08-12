@@ -32,10 +32,10 @@ export function parseBomCsv(text: string): ParseResult {
     qty: header.indexOf("qty"),
     notes: header.indexOf("notes"),
   };
-  if (idx.part < 0 || idx.rev < 0 || idx.qty < 0) {
+  if (idx.part < 0 || idx.rev < 0 || idx.qty < 0 || idx.find < 0) {
     return {
       ok: false,
-      error: `Header must include part, rev, qty (got: ${rows[0]}).`,
+      error: `Header must include find, part, rev, qty (got: ${rows[0]}).`,
     };
   }
 
@@ -51,8 +51,15 @@ export function parseBomCsv(text: string): ParseResult {
     if (!Number.isFinite(qty) || qty <= 0) {
       return { ok: false, error: `Row ${i + 1}: qty must be a positive number.` };
     }
+    const findNumber = (cols[idx.find] ?? "").trim();
+    if (!findNumber) {
+      return { ok: false, error: `Row ${i + 1}: find number is required.` };
+    }
+    if (lines.some((l) => l.findNumber === findNumber)) {
+      return { ok: false, error: `Row ${i + 1}: duplicate find number ${findNumber}.` };
+    }
     lines.push({
-      findNumber: idx.find >= 0 ? (cols[idx.find] ?? "").trim() : "",
+      findNumber,
       partNumber,
       revision,
       qty,

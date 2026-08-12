@@ -3,7 +3,7 @@ import type { Db } from "../../db";
 import * as s from "../../db/schema";
 import { id } from "../id";
 import { getConfigBom } from "../impact";
-import { issueReserved, reserveLot, unreserveLot } from "./inventory";
+import { issueReserved, reserveLot, unreserveLot, availableQty } from "./inventory";
 
 export type KitResult<T = object> =
   | ({ ok: true } & T)
@@ -168,6 +168,107 @@ export function allocateKitLine(
     }
   });
   return { ok: true };
+}
+
+function pickLotForLine(
+  db: Db,
+  kit: typeof s.kits.$inferSelect,
+  line: typeof s.kitLines.$inferSelect,
+) {
+  const allowed = allowedRevIds(db, kit, line.partRevisionId);
+  return db
+    .select()
+    .from(s.inventoryLots)
+    .all()
+    .filter((lot) => allowed.has(lot.partRevisionId) && availableQty(lot) >= line.qty)
+    .sort(
+      (a, b) =>
+        availableQty(b) - availableQty(a) || a.lotCode.localeCompare(b.lotCode),
+    )[0];
+}
+
+export function unallocateKitLine(
+  db: Db,
+  input: { kitLineId: string; by: string },
+): KitResult {
+  const line = db
+    .select()
+    .from(s.kitLines)
+    .where(eq(s.kitLines.id, input.kitLineId))
+    .get();
+  if (!line) return { ok: false, error: "Kit line not found." };
+  if (!line.lotId) return { ok: false, error: "Line is not allocated." };
+  const kit = db.select().from(s.kits).where(eq(s.kits.id, line.kitId)).get();
+  if (!kit) return { ok: false, error: "Kit not found." };
+  if (kit.status === "issued" || kit.status === "cancelled") {
+    return { ok: false, error: `Kit is ${kit.status} and cannot be unallocated.` };
+  }
+
+  db.transaction((tx) => {
+    const released = unreserveLot(tx, {
+      lotId: line.lotId!,
+      qty: line.qty,
+      by: input.by,
+      reason: `Unallocate ${kit.key}`,
+      refType: "kit",
+      refId: kit.id,
+    });
+    if (!released.ok) throw new Error(released.error);
+    tx.update(s.kitLines)
+      .set({ lotId: null })
+      .where(eq(s.kitLines.id, line.id))
+      .run();
+    if (kit.status === "reserved") {
+      tx.update(s.kits)
+        .set({ status: "open" })
+        .where(eq(s.kits.id, kit.id))
+        .run();
+    }
+  });
+  return { ok: true };
+}
+
+export function allocateRemaining(
+  db: Db,
+  input: { kitId: string; by: string },
+): KitResult<{ allocated: number; skipped: number }> {
+  const kit = db.select().from(s.kits).where(eq(s.kits.id, input.kitId)).get();
+  if (!kit) return { ok: false, error: "Kit not found." };
+  if (kit.status === "issued" || kit.status === "cancelled") {
+    return { ok: false, error: `Kit is ${kit.status} and cannot be allocated.` };
+  }
+
+  const lines = db
+    .select()
+    .from(s.kitLines)
+    .where(eq(s.kitLines.kitId, kit.id))
+    .all();
+
+  let allocated = 0;
+  let skipped = 0;
+  for (const line of lines) {
+    if (line.lotId) continue;
+    const lot = pickLotForLine(db, kit, line);
+    if (!lot) {
+      skipped++;
+      continue;
+    }
+    const result = allocateKitLine(db, {
+      kitLineId: line.id,
+      lotId: lot.id,
+      by: input.by,
+    });
+    if (!result.ok) skipped++;
+    else allocated++;
+  }
+
+  if (allocated === 0 && skipped > 0) {
+    return {
+      ok: false,
+      error: "No matching lots with enough available qty for the open lines.",
+    };
+  }
+  return { ok: true, allocated, skipped };
 }
 
 export function issueKit(

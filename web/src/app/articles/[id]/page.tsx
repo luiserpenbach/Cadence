@@ -6,6 +6,7 @@ import { ensureAppData } from "../../../lib/bootstrap";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { diffAsBuilt } from "../../../lib/domain/asbuilt";
+import { getConfigBom } from "../../../lib/impact";
 import { AsBuiltForm } from "../../../components/authoring-forms";
 import { ReverseAsBuiltButton } from "../../../components/inventory-forms";
 import { QrLabel } from "../../../components/qr";
@@ -67,6 +68,20 @@ export default async function ArticleDetailPage({
     .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
 
   const delta = diffAsBuilt(db, article.id);
+  const designedPins = delta?.configId ? getConfigBom(delta.configId) : [];
+  const pinRevIds = new Set(designedPins.map((p) => p.partRevisionId));
+  const asBuiltOptions = [
+    ...designedPins.map((p) => ({
+      id: p.partRevisionId,
+      label: `pin ${p.findNumber} · ${p.partNumber} @ ${p.revision}`,
+    })),
+    ...partRevs
+      .filter((p) => !pinRevIds.has(p.id))
+      .map((p) => ({
+        id: p.id,
+        label: `${p.partNumber} @ ${p.revision}`,
+      })),
+  ];
 
   return (
     <AppShell title={article.serial} subtitle={article.name}>
@@ -176,10 +191,7 @@ export default async function ArticleDetailPage({
             <h2 className="font-display text-xl">Record as-built</h2>
             <AsBuiltForm
               articleId={article.id}
-              partRevs={partRevs.map((p) => ({
-                id: p.id,
-                label: `${p.partNumber} @ ${p.revision}`,
-              }))}
+              partRevs={asBuiltOptions}
               runs={runs.map((r) => ({ id: r.id, key: r.key }))}
             />
           </Panel>

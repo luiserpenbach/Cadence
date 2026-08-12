@@ -43,8 +43,8 @@ npm run db:generate   # drizzle-kit migration from schema changes
 | `/procedures` | Versioned work instructions |
 | `/trace` | Serial / lot genealogy |
 | `/change` | Config delta / blast radius |
-| `/inventory` | Lots, receive/adjust, movements |
-| `/kits` | Reserve lots and issue as-built |
+| `/inventory` | Lots, receive/adjust, search, kit holds |
+| `/kits` | Reserve lots (allocate remaining) and issue as-built |
 | `/procurement` | POs and receive-into-stock |
 
 See repo root [`CONCEPT.md`](../CONCEPT.md) for product decisions.

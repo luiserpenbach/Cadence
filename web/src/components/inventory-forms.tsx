@@ -5,6 +5,7 @@ import {
   addPoLineAction,
   adjustLotAction,
   allocateKitLineAction,
+  allocateRemainingAction,
   cancelKitAction,
   createKitAction,
   createLotAction,
@@ -15,10 +16,11 @@ import {
   openShortagePoAction,
   receivePoAction,
   reverseAsBuiltAction,
+  unallocateKitLineAction,
   updatePartAction,
   type ActionState,
 } from "../lib/actions";
-import { PartRevPicker } from "./pickers";
+import { PartRevPicker, useRefreshOnOk } from "./pickers";
 
 const initialState: ActionState = { ok: false, error: "" };
 const inputClass =
@@ -50,8 +52,9 @@ type PartRev = { id: string; label: string };
 
 export function CreateLotForm({ partRevs }: { partRevs: PartRev[] }) {
   const [state, formAction, pending] = useActionState(createLotAction, initialState);
+  useRefreshOnOk(state);
   return (
-    <form action={formAction} className="mt-3 space-y-2">
+    <form action={formAction} className="mt-3 space-y-2" data-testid="create-lot-form">
       <PartRevPicker name="partRevisionId" options={partRevs} />
       <div className="flex gap-2">
         <input name="lotCode" required placeholder="Lot code" className={`font-mono ${inputClass}`} />
@@ -77,6 +80,7 @@ export function AdjustLotForm({
   lots: Array<{ id: string; label: string }>;
 }) {
   const [state, formAction, pending] = useActionState(adjustLotAction, initialState);
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <select name="lotId" className={inputClass}>
@@ -109,6 +113,7 @@ export function AdjustLotForm({
 
 export function CreatePoForm() {
   const [state, formAction, pending] = useActionState(createPoAction, initialState);
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input name="poNumber" required placeholder="PO-2026-0143" className={`font-mono ${inputClass}`} />
@@ -125,6 +130,7 @@ export function CreatePoForm() {
 
 export function AddPoLineForm({ poId, partRevs }: { poId: string; partRevs: PartRev[] }) {
   const [state, formAction, pending] = useActionState(addPoLineAction, initialState);
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="poId" value={poId} />
@@ -150,6 +156,8 @@ export function PoStatusButtons({ poId, status }: { poId: string; status: string
     receivePoAction,
     initialState,
   );
+  useRefreshOnOk(orderState);
+  useRefreshOnOk(recvState);
   return (
     <div className="mt-3 space-y-2">
       {status === "open" ? (
@@ -232,6 +240,7 @@ export function AllocateKitLineForm({
     allocateKitLineAction,
     initialState,
   );
+  useRefreshOnOk(state);
   if (lots.length === 0) {
     return <p className="text-xs text-[var(--muted)]">No matching lots on hand.</p>;
   }
@@ -255,6 +264,50 @@ export function AllocateKitLineForm({
   );
 }
 
+export function UnallocateKitLineForm({
+  kitId,
+  kitLineId,
+}: {
+  kitId: string;
+  kitLineId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    unallocateKitLineAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  return (
+    <form action={formAction} className="inline">
+      <input type="hidden" name="kitId" value={kitId} />
+      <input type="hidden" name="kitLineId" value={kitLineId} />
+      <input type="hidden" name="by" value="m.chen" />
+      {state.error ? <span className="mr-1 text-xs text-rose-700">{state.error}</span> : null}
+      <button type="submit" disabled={pending} className="text-xs underline">
+        Unallocate
+      </button>
+    </form>
+  );
+}
+
+export function AllocateRemainingForm({ kitId }: { kitId: string }) {
+  const [state, formAction, pending] = useActionState(
+    allocateRemainingAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  return (
+    <form action={formAction} className="space-y-2">
+      <input type="hidden" name="kitId" value={kitId} />
+      <input name="by" defaultValue="m.chen" className={inputClass} />
+      <ActionError state={state} />
+      <ActionMessage state={state} />
+      <button type="submit" disabled={pending} className={buttonClass}>
+        Allocate remaining
+      </button>
+    </form>
+  );
+}
+
 export function KitLifecycleButtons({
   kitId,
   articleId,
@@ -272,9 +325,14 @@ export function KitLifecycleButtons({
     cancelKitAction,
     initialState,
   );
+  useRefreshOnOk(issueState);
+  useRefreshOnOk(cancelState);
   return (
     <div className="space-y-3">
-      {status === "reserved" || status === "open" ? (
+      {status === "open" || status === "reserved" ? (
+        <AllocateRemainingForm kitId={kitId} />
+      ) : null}
+      {status === "open" || status === "reserved" ? (
         <form action={issueAction} className="space-y-2">
           <input type="hidden" name="kitId" value={kitId} />
           <input type="hidden" name="articleId" value={articleId} />
@@ -306,6 +364,7 @@ export function ImportBomForm({ configId }: { configId: string }) {
     importBomCsvAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="configId" value={configId} />
@@ -337,6 +396,7 @@ export function EditPartForm({
   };
 }) {
   const [state, formAction, pending] = useActionState(updatePartAction, initialState);
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="partId" value={part.id} />
@@ -378,6 +438,7 @@ export function ReverseAsBuiltButton({
     reverseAsBuiltAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="inline">
       <input type="hidden" name="asBuiltId" value={asBuiltId} />

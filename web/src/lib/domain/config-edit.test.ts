@@ -140,6 +140,33 @@ describe("draft config editing", () => {
     ).toBe(false);
   });
 
+  it("requires a unique find number", () => {
+    expect(
+      addBomLine(db, {
+        configId: draftId,
+        partRevisionId: revId,
+        qty: 1,
+        findNumber: "",
+      }).ok,
+    ).toBe(false);
+    expect(
+      addBomLine(db, {
+        configId: draftId,
+        partRevisionId: revId,
+        qty: 1,
+        findNumber: "10",
+      }).ok,
+    ).toBe(true);
+    expect(
+      addBomLine(db, {
+        configId: draftId,
+        partRevisionId: revId,
+        qty: 1,
+        findNumber: "10",
+      }).ok,
+    ).toBe(false);
+  });
+
   it("deduplicates required tests", () => {
     expect(
       addRequiredTest(db, { configId: draftId, testDefinitionId: testId }).ok,

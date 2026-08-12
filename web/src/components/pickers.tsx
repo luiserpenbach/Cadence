@@ -1,9 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { ActionState } from "../lib/actions";
 
 const inputClass =
   "w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm";
+
+export function useRefreshOnOk(state: ActionState) {
+  const router = useRouter();
+  useEffect(() => {
+    if (state.ok) router.refresh();
+  }, [state, router]);
+}
 
 export function PartRevPicker({
   name,
@@ -17,12 +26,19 @@ export function PartRevPicker({
   className?: string;
 }) {
   const [q, setQ] = useState("");
+  const [value, setValue] = useState(defaultValue ?? options[0]?.id ?? "");
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return options;
     return options.filter((o) => o.label.toLowerCase().includes(needle));
   }, [options, q]);
-  const shown = filtered;
+  const selected =
+    filtered.length === 0
+      ? ""
+      : filtered.some((o) => o.id === value)
+        ? value
+        : filtered[0].id;
+
   return (
     <div className={className}>
       <input
@@ -30,16 +46,20 @@ export function PartRevPicker({
         onChange={(e) => setQ(e.target.value)}
         placeholder="Filter parts…"
         className={`mb-1 ${inputClass}`}
+        autoComplete="off"
       />
+      {/* Hidden field posts the id; the visible select can lag a paint behind filter. */}
+      <input type="hidden" name={name} value={selected} />
       <select
-        name={name}
-        defaultValue={defaultValue}
+        value={selected}
+        onChange={(e) => setValue(e.target.value)}
         className={inputClass}
+        aria-label={name}
       >
-        {shown.length === 0 ? (
+        {filtered.length === 0 ? (
           <option value="">No matches</option>
         ) : (
-          shown.map((o) => (
+          filtered.map((o) => (
             <option key={o.id} value={o.id}>
               {o.label}
             </option>

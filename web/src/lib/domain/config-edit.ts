@@ -45,16 +45,15 @@ export function addBomLine(
   if (input.qty <= 0) return { ok: false, error: "Quantity must be positive." };
 
   const findNumber = input.findNumber.trim();
-  if (findNumber) {
-    const dup = db
-      .select()
-      .from(s.configBomLines)
-      .where(eq(s.configBomLines.configId, input.configId))
-      .all()
-      .find((l) => l.findNumber === findNumber);
-    if (dup) {
-      return { ok: false, error: `Find number ${findNumber} is already used on this config.` };
-    }
+  if (!findNumber) return { ok: false, error: "Find number is required." };
+  const dup = db
+    .select()
+    .from(s.configBomLines)
+    .where(eq(s.configBomLines.configId, input.configId))
+    .all()
+    .find((l) => l.findNumber === findNumber);
+  if (dup) {
+    return { ok: false, error: `Find number ${findNumber} is already used on this config.` };
   }
 
   db.insert(s.configBomLines)
@@ -105,16 +104,15 @@ export function updateBomLine(
   if (input.qty <= 0) return { ok: false, error: "Quantity must be positive." };
 
   const findNumber = input.findNumber.trim();
-  if (findNumber) {
-    const dup = db
-      .select()
-      .from(s.configBomLines)
-      .where(eq(s.configBomLines.configId, input.configId))
-      .all()
-      .find((l) => l.findNumber === findNumber && l.id !== input.bomLineId);
-    if (dup) {
-      return { ok: false, error: `Find number ${findNumber} is already used on this config.` };
-    }
+  if (!findNumber) return { ok: false, error: "Find number is required." };
+  const dup = db
+    .select()
+    .from(s.configBomLines)
+    .where(eq(s.configBomLines.configId, input.configId))
+    .all()
+    .find((l) => l.findNumber === findNumber && l.id !== input.bomLineId);
+  if (dup) {
+    return { ok: false, error: `Find number ${findNumber} is already used on this config.` };
   }
 
   db.update(s.configBomLines)

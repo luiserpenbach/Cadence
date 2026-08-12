@@ -12,6 +12,7 @@ import {
 } from "../test/fixtures";
 import { buildImpactReport, diffBom, getDefaultDelta } from "./impact";
 import { compareSerials } from "./serial";
+import { createLot, reserveLot } from "./domain/inventory";
 
 describe("compareSerials", () => {
   it("compares numeric runs as numbers", () => {
@@ -147,5 +148,40 @@ describe("buildImpactReport", () => {
     const report = buildImpactReport(from, to)!;
     expect(report.kitCount).toBe(1);
     expect(report.articlesOnPrior.map((a) => a.serial)).toEqual(["TP-014"]);
+  });
+
+  it("treats reserved qty as unavailable when computing shortages", () => {
+    const revId = makePart(db, "VLV-001").revId;
+    const from = makeConfig(db, "CFG-N");
+    const to = makeConfig(db, "CFG-N1");
+    addBomLine(db, to, revId, 2, "10");
+    db.insert(s.configEffectivity)
+      .values({
+        id: id("eff"),
+        configId: to,
+        articleScope: "any",
+        standScope: "any",
+      })
+      .run();
+    makeArticle(db, "TP-1");
+    const lot = createLot(db, {
+      partRevisionId: revId,
+      qty: 2,
+      lotCode: "LOT-A",
+      location: "CAGE",
+      by: "cage",
+    });
+    if (!lot.ok) throw new Error("lot");
+    reserveLot(db, { lotId: lot.lotId, qty: 2, by: "cage", reason: "other kit" });
+
+    const report = buildImpactReport(from, to)!;
+    expect(report.kitCount).toBe(1);
+    expect(report.inventoryShortages).toHaveLength(1);
+    expect(report.inventoryShortages[0]).toMatchObject({
+      needed: 2,
+      onHand: 2,
+      available: 0,
+      short: 2,
+    });
   });
 });

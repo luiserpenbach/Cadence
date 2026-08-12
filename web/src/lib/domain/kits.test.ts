@@ -10,7 +10,7 @@ import {
   makeRevision,
 } from "../../test/fixtures";
 import { createLot } from "./inventory";
-import { allocateKitLine, cancelKit, createKit, issueKit } from "./kits";
+import { allocateKitLine, allocateRemaining, cancelKit, createKit, issueKit, unallocateKitLine } from "./kits";
 import { addBomAlternate } from "./config-edit";
 
 function releasedConfigWithPin(db: Db, revId: string) {
@@ -115,5 +115,46 @@ describe("kits", () => {
         by: "cage",
       }).ok,
     ).toBe(true);
+  });
+
+  it("allocates remaining lines from available lots and can unallocate", () => {
+    const articleId = makeArticle(db, "TP-017");
+    const valve = makePart(db, "VLV-001").revId;
+    const orifice = makePart(db, "ORF-070").revId;
+    const configId = makeConfig(db, "CFG-N");
+    addBomLine(db, configId, valve, 1, "10");
+    addBomLine(db, configId, orifice, 1, "20");
+    db.update(s.configurations).set({ status: "released" }).run();
+
+    const vLot = createLot(db, {
+      partRevisionId: valve,
+      qty: 1,
+      lotCode: "LOT-V",
+      location: "CAGE",
+      by: "cage",
+    });
+    const oLot = createLot(db, {
+      partRevisionId: orifice,
+      qty: 1,
+      lotCode: "LOT-O",
+      location: "CAGE",
+      by: "cage",
+    });
+    if (!vLot.ok || !oLot.ok) throw new Error("lot");
+
+    const kit = createKit(db, { articleId, configId, by: "cage" });
+    if (!kit.ok) throw new Error("kit");
+    const remaining = allocateRemaining(db, { kitId: kit.kitId, by: "cage" });
+    expect(remaining.ok).toBe(true);
+    if (!remaining.ok) return;
+    expect(remaining.allocated).toBe(2);
+    expect(db.select().from(s.kits).all()[0].status).toBe("reserved");
+
+    const line = db.select().from(s.kitLines).all()[0];
+    expect(unallocateKitLine(db, { kitLineId: line.id, by: "cage" }).ok).toBe(true);
+    expect(db.select().from(s.kits).all()[0].status).toBe("open");
+    expect(db.select().from(s.inventoryLots).all().every((l) => l.qtyReserved <= 1)).toBe(
+      true,
+    );
   });
 });
