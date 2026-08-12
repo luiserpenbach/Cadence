@@ -18,6 +18,7 @@ import {
   uploadFileAttachmentAction,
   type ActionState,
 } from "../lib/actions";
+import { PartRevPicker } from "./pickers";
 
 const initialState: ActionState = { ok: false, error: "" };
 
@@ -87,6 +88,11 @@ export function NewPartForm() {
           <option value="assembly">assembly</option>
         </select>
       </div>
+      <textarea
+        name="description"
+        placeholder="Description (optional)"
+        className={`min-h-16 ${inputClass}`}
+      />
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Create part
@@ -346,13 +352,7 @@ export function AsBuiltForm({
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="articleId" value={articleId} />
-      <select name="partRevisionId" className={inputClass}>
-        {partRevs.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.label}
-          </option>
-        ))}
-      </select>
+      <PartRevPicker name="partRevisionId" options={partRevs} />
       <div className="flex gap-2">
         <input
           name="qty"
@@ -376,6 +376,7 @@ export function AsBuiltForm({
           </option>
         ))}
       </select>
+      <input name="by" defaultValue="m.chen" className={inputClass} />
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Record as-built line
@@ -522,6 +523,7 @@ export function BomLineEditor({
   currentRevId,
   qty,
   findNumber,
+  notes,
 }: {
   configId: string;
   bomLineId: string;
@@ -529,6 +531,7 @@ export function BomLineEditor({
   currentRevId: string;
   qty: number;
   findNumber: string;
+  notes: string;
 }) {
   const [state, formAction, pending] = useActionState(
     configEditAction,
@@ -542,7 +545,7 @@ export function BomLineEditor({
       <select
         name="partRevisionId"
         defaultValue={currentRevId}
-        className="rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+        className="max-w-56 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
       >
         {revOptions.map((r) => (
           <option key={r.id} value={r.id}>
@@ -563,6 +566,12 @@ export function BomLineEditor({
         defaultValue={findNumber}
         placeholder="find"
         className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+      />
+      <input
+        name="notes"
+        defaultValue={notes}
+        placeholder="notes"
+        className="w-28 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
       />
       <button
         type="submit"
@@ -609,6 +618,48 @@ export function ConfigEditButton({
   );
 }
 
+export function AddAlternateForm({
+  configId,
+  lines,
+  partRevs,
+}: {
+  configId: string;
+  lines: Array<{ id: string; label: string }>;
+  partRevs: Array<{ id: string; label: string }>;
+}) {
+  const [state, formAction, pending] = useActionState(
+    configEditAction,
+    initialState,
+  );
+  if (lines.length === 0) return null;
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input type="hidden" name="op" value="add_alt" />
+      <input type="hidden" name="configId" value={configId} />
+      <div className="flex flex-wrap gap-2">
+        <select name="bomLineId" className={inputClass}>
+          {lines.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+        <select name="partRevisionId" className={inputClass}>
+          {partRevs.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <button type="submit" disabled={pending} className={subtleButtonClass}>
+          Allow alternate
+        </button>
+      </div>
+      <ActionError state={state} />
+    </form>
+  );
+}
+
 export function AddBomLineForm({
   configId,
   partRevs,
@@ -624,13 +675,7 @@ export function AddBomLineForm({
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="op" value="add_bom" />
       <input type="hidden" name="configId" value={configId} />
-      <select name="partRevisionId" className={inputClass}>
-        {partRevs.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.label}
-          </option>
-        ))}
-      </select>
+      <PartRevPicker name="partRevisionId" options={partRevs} />
       <div className="flex gap-2">
         <input
           name="qty"
@@ -645,6 +690,7 @@ export function AddBomLineForm({
           placeholder="Find no."
           className={`w-28 ${inputClass}`}
         />
+        <input name="notes" placeholder="Notes" className={inputClass} />
         <button type="submit" disabled={pending} className={subtleButtonClass}>
           Add pin
         </button>

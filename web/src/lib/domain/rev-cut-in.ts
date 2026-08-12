@@ -101,9 +101,10 @@ export function cutInRevision(
         .where(eq(s.configBomLines.configId, base.id))
         .all();
       for (const line of bom) {
+        const newBomId = id("bom");
         tx.insert(s.configBomLines)
           .values({
-            id: id("bom"),
+            id: newBomId,
             configId: newId,
             partRevisionId: siblingRevIds.includes(line.partRevisionId)
               ? newRev.id
@@ -113,6 +114,20 @@ export function cutInRevision(
             notes: line.notes,
           })
           .run();
+        const alts = tx
+          .select()
+          .from(s.configBomAlternates)
+          .where(eq(s.configBomAlternates.bomLineId, line.id))
+          .all();
+        for (const alt of alts) {
+          tx.insert(s.configBomAlternates)
+            .values({
+              id: id("alt"),
+              bomLineId: newBomId,
+              partRevisionId: alt.partRevisionId,
+            })
+            .run();
+        }
       }
 
       const tests = tx

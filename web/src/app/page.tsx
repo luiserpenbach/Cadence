@@ -95,7 +95,7 @@ export default function HomePage() {
               <Stat
                 label="Inventory gaps"
                 value={String(impact.inventoryShortages.length)}
-                hint="short lots"
+                hint="short pins"
               />
               <Stat
                 label="Articles on prior"

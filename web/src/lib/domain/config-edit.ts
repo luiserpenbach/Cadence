@@ -30,6 +30,7 @@ export function addBomLine(
     partRevisionId: string;
     qty: number;
     findNumber: string;
+    notes?: string;
   },
 ): EditResult {
   const guard = requireDraft(db, input.configId);
@@ -43,13 +44,27 @@ export function addBomLine(
   if (!rev) return { ok: false, error: "Part revision not found." };
   if (input.qty <= 0) return { ok: false, error: "Quantity must be positive." };
 
+  const findNumber = input.findNumber.trim();
+  if (findNumber) {
+    const dup = db
+      .select()
+      .from(s.configBomLines)
+      .where(eq(s.configBomLines.configId, input.configId))
+      .all()
+      .find((l) => l.findNumber === findNumber);
+    if (dup) {
+      return { ok: false, error: `Find number ${findNumber} is already used on this config.` };
+    }
+  }
+
   db.insert(s.configBomLines)
     .values({
       id: id("bom"),
       configId: input.configId,
       partRevisionId: input.partRevisionId,
       qty: input.qty,
-      findNumber: input.findNumber,
+      findNumber,
+      notes: input.notes ?? "",
     })
     .run();
   return { ok: true };
@@ -63,6 +78,7 @@ export function updateBomLine(
     partRevisionId: string;
     qty: number;
     findNumber: string;
+    notes?: string;
   },
 ): EditResult {
   const guard = requireDraft(db, input.configId);
@@ -88,11 +104,25 @@ export function updateBomLine(
   if (!rev) return { ok: false, error: "Part revision not found." };
   if (input.qty <= 0) return { ok: false, error: "Quantity must be positive." };
 
+  const findNumber = input.findNumber.trim();
+  if (findNumber) {
+    const dup = db
+      .select()
+      .from(s.configBomLines)
+      .where(eq(s.configBomLines.configId, input.configId))
+      .all()
+      .find((l) => l.findNumber === findNumber && l.id !== input.bomLineId);
+    if (dup) {
+      return { ok: false, error: `Find number ${findNumber} is already used on this config.` };
+    }
+  }
+
   db.update(s.configBomLines)
     .set({
       partRevisionId: input.partRevisionId,
       qty: input.qty,
-      findNumber: input.findNumber,
+      findNumber,
+      notes: input.notes ?? line.notes,
     })
     .where(eq(s.configBomLines.id, input.bomLineId))
     .run();
@@ -106,14 +136,19 @@ export function removeBomLine(
   const guard = requireDraft(db, input.configId);
   if (!guard.ok) return guard;
 
-  db.delete(s.configBomLines)
-    .where(
-      and(
-        eq(s.configBomLines.id, input.bomLineId),
-        eq(s.configBomLines.configId, input.configId),
-      ),
-    )
-    .run();
+  db.transaction((tx) => {
+    tx.delete(s.configBomAlternates)
+      .where(eq(s.configBomAlternates.bomLineId, input.bomLineId))
+      .run();
+    tx.delete(s.configBomLines)
+      .where(
+        and(
+          eq(s.configBomLines.id, input.bomLineId),
+          eq(s.configBomLines.configId, input.configId),
+        ),
+      )
+      .run();
+  });
   return { ok: true };
 }
 
@@ -313,5 +348,73 @@ export function removeEffectivityRow(
       .where(eq(s.configEffectivity.id, row.id))
       .run();
   });
+  return { ok: true };
+}
+
+export function addBomAlternate(
+  db: Db,
+  input: { configId: string; bomLineId: string; partRevisionId: string },
+): EditResult {
+  const guard = requireDraft(db, input.configId);
+  if (!guard.ok) return guard;
+
+  const line = db
+    .select()
+    .from(s.configBomLines)
+    .where(
+      and(
+        eq(s.configBomLines.id, input.bomLineId),
+        eq(s.configBomLines.configId, input.configId),
+      ),
+    )
+    .get();
+  if (!line) return { ok: false, error: "BoM line not found." };
+  if (line.partRevisionId === input.partRevisionId) {
+    return { ok: false, error: "Alternate cannot be the pinned revision." };
+  }
+  const rev = db
+    .select()
+    .from(s.partRevisions)
+    .where(eq(s.partRevisions.id, input.partRevisionId))
+    .get();
+  if (!rev) return { ok: false, error: "Part revision not found." };
+
+  const existing = db
+    .select()
+    .from(s.configBomAlternates)
+    .where(
+      and(
+        eq(s.configBomAlternates.bomLineId, input.bomLineId),
+        eq(s.configBomAlternates.partRevisionId, input.partRevisionId),
+      ),
+    )
+    .get();
+  if (existing) return { ok: false, error: "That alternate is already listed." };
+
+  db.insert(s.configBomAlternates)
+    .values({
+      id: id("alt"),
+      bomLineId: input.bomLineId,
+      partRevisionId: input.partRevisionId,
+    })
+    .run();
+  return { ok: true };
+}
+
+export function removeBomAlternate(
+  db: Db,
+  input: { configId: string; bomLineId: string; partRevisionId: string },
+): EditResult {
+  const guard = requireDraft(db, input.configId);
+  if (!guard.ok) return guard;
+
+  db.delete(s.configBomAlternates)
+    .where(
+      and(
+        eq(s.configBomAlternates.bomLineId, input.bomLineId),
+        eq(s.configBomAlternates.partRevisionId, input.partRevisionId),
+      ),
+    )
+    .run();
   return { ok: true };
 }

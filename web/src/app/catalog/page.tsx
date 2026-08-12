@@ -9,37 +9,37 @@ import {
   NewPartForm,
   NewRevisionForm,
 } from "../../components/authoring-forms";
+import { stockByRevision } from "../../lib/domain/inventory";
 
 export const dynamic = "force-dynamic";
 
-export default function CatalogPage() {
+export default async function CatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   ensureAppData();
+  const params = await searchParams;
+  const q = (typeof params.q === "string" ? params.q : "").trim().toLowerCase();
   const db = getDb();
-  const rows = db
-    .select({
-      partId: s.parts.id,
-      partNumber: s.parts.partNumber,
-      name: s.parts.name,
-      category: s.parts.category,
-      sourcing: s.parts.sourcing,
-      kind: s.parts.kind,
-      revision: s.partRevisions.revision,
-      notes: s.partRevisions.notes,
-      status: s.partRevisions.status,
+  const parts = db.select().from(s.parts).all();
+  const revs = db.select().from(s.partRevisions).all();
+  const revsByPart = new Map<string, typeof revs>();
+  for (const r of revs) {
+    const list = revsByPart.get(r.partId) ?? [];
+    list.push(r);
+    revsByPart.set(r.partId, list);
+  }
+  const stock = stockByRevision(db);
+
+  const filtered = parts
+    .filter((p) => {
+      if (!q) return true;
+      const hay = `${p.partNumber} ${p.name} ${p.category} ${p.sourcing} ${p.kind} ${p.description}`.toLowerCase();
+      return hay.includes(q);
     })
-    .from(s.partRevisions)
-    .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
-    .all()
-    .sort((a, b) =>
-      `${a.partNumber}@${a.revision}`.localeCompare(
-        `${b.partNumber}@${b.revision}`,
-      ),
-    );
-  const parts = db
-    .select({ id: s.parts.id, partNumber: s.parts.partNumber })
-    .from(s.parts)
-    .all()
     .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+
   const partRevOptions = db
     .select({
       id: s.partRevisions.id,
@@ -60,33 +60,59 @@ export default function CatalogPage() {
     >
       <div className="grid gap-5 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
+          <form method="get" className="mb-4 flex gap-2">
+            <input
+              name="q"
+              defaultValue={q}
+              placeholder="Search part number, name, category…"
+              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
+            >
+              Search
+            </button>
+          </form>
           <DataTable
-            headers={["Part", "Rev", "Name", "Type", "Sourcing", "Notes"]}
-            rows={rows.map((r) => [
-              <Link
-                key="pn"
-                href={`/catalog/${r.partId}`}
-                className="font-mono text-xs underline-offset-2 hover:underline"
-              >
-                {r.partNumber}
-              </Link>,
-              <Badge key="rev" tone="accent">
-                {r.revision}
-              </Badge>,
-              r.name,
-              <span key="t" className="text-xs">
-                {r.category}
-                {r.kind === "assembly" ? (
-                  <Badge tone="warn"> assembly</Badge>
-                ) : null}
-              </span>,
-              <Badge key="src" tone={r.sourcing === "make" ? "accent" : "neutral"}>
-                {r.sourcing}
-              </Badge>,
-              <span key="n" className="text-[var(--muted)]">
-                {r.notes || "—"}
-              </span>,
-            ])}
+            empty="No parts match — create one to the right."
+            headers={["Part", "Name", "Revs", "Type", "Sourcing", "On hand"]}
+            rows={filtered.map((p) => {
+              const partRevs = (revsByPart.get(p.id) ?? []).sort((a, b) =>
+                a.revision.localeCompare(b.revision),
+              );
+              const onHand = partRevs.reduce(
+                (sum, r) => sum + (stock.get(r.id)?.onHand ?? 0),
+                0,
+              );
+              return [
+                <Link
+                  key="pn"
+                  href={`/catalog/${p.id}`}
+                  className="font-mono text-xs underline-offset-2 hover:underline"
+                >
+                  {p.partNumber}
+                </Link>,
+                p.name,
+                <span key="r" className="flex flex-wrap gap-1">
+                  {partRevs.map((r) => (
+                    <Badge key={r.id} tone="accent">
+                      {r.revision}
+                    </Badge>
+                  ))}
+                </span>,
+                <span key="t" className="text-xs">
+                  {p.category}
+                  {p.kind === "assembly" ? (
+                    <Badge tone="warn"> assembly</Badge>
+                  ) : null}
+                </span>,
+                <Badge key="src" tone={p.sourcing === "make" ? "accent" : "neutral"}>
+                  {p.sourcing}
+                </Badge>,
+                String(onHand),
+              ];
+            })}
           />
         </Panel>
 
@@ -100,7 +126,12 @@ export default function CatalogPage() {
             <p className="mt-1 text-sm text-[var(--muted)]">
               Only when the artifact changes (drawing, material, interface).
             </p>
-            <NewRevisionForm parts={parts} />
+            <NewRevisionForm
+              parts={parts
+                .slice()
+                .sort((a, b) => a.partNumber.localeCompare(b.partNumber))
+                .map((p) => ({ id: p.id, partNumber: p.partNumber }))}
+            />
           </Panel>
           <Panel>
             <h2 className="font-display text-xl">Cut in a revision</h2>

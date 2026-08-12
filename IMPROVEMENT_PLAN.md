@@ -317,6 +317,24 @@ link/file attachments.*
    pinning any rev), attachments panel, add-revision form. Config detail
    gains the same attachments panel.
 
+### Phase 10 — BoM & inventory operations ✅ done
+*Goal (from the BoM/inventory assessment): stock that moves, kits, and
+BoM authoring that scales past the demo.*
+
+1. P0 correctness: articles-on-prior honors explicit + serial-range
+   effectivity; shortage demand is kit-count × pin qty (plus inbound POs);
+   as-designed vs as-built compares without requiring a run.
+2. Thin inventory write path: create/adjust lots, movement ledger,
+   unique (rev, lot code), available = on-hand − reserved.
+3. Procurement: create PO + lines, mark ordered, receive into stock.
+   Change impact can open a shortage PO.
+4. Proto kits: pull from a released config, allocate lots (pinned rev or
+   allowed alternate), issue consumes reserved stock and stamps as-built.
+5. As-built consume/reverse against matching lot codes.
+6. BoM authoring: in-place part swap, unique find numbers, line notes,
+   allowed alternates, CSV import/export, catalog search + group-by-part,
+   editable part metadata, on-hand on Floor / catalog / part detail.
+
 ### Explicitly deferred (per concept freeze)
 Hard gating by risk class, CAD/PLM import, date effectivity, multi-site,
 rate production, auth/multi-user (keep free-text identity fields for v0, but

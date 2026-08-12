@@ -16,6 +16,7 @@ export function createPart(
     revision: string;
     sourcing?: string;
     kind?: string;
+    description?: string;
   },
 ): AuthoringResult<{ partId: string }> {
   const duplicate = db
@@ -37,6 +38,7 @@ export function createPart(
         category: input.category,
         sourcing: input.sourcing ?? "buy",
         kind: input.kind ?? "component",
+        description: input.description ?? "",
       })
       .run();
     tx.insert(s.partRevisions)
@@ -81,6 +83,38 @@ export function addPartRevision(
       revision: input.revision,
       notes: input.notes,
     })
+    .run();
+  return { ok: true };
+}
+
+export function updatePart(
+  db: Db,
+  input: {
+    partId: string;
+    name: string;
+    category: string;
+    sourcing: string;
+    kind: string;
+    description: string;
+  },
+): AuthoringResult {
+  const part = db
+    .select()
+    .from(s.parts)
+    .where(eq(s.parts.id, input.partId))
+    .get();
+  if (!part) return { ok: false, error: "Part not found." };
+  if (!input.name.trim()) return { ok: false, error: "Name is required." };
+
+  db.update(s.parts)
+    .set({
+      name: input.name.trim(),
+      category: input.category.trim() || part.category,
+      sourcing: input.sourcing,
+      kind: input.kind,
+      description: input.description.trim(),
+    })
+    .where(eq(s.parts.id, input.partId))
     .run();
   return { ok: true };
 }

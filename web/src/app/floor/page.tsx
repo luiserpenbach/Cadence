@@ -6,6 +6,8 @@ import * as s from "../../db/schema";
 import { getFloorView } from "../../lib/domain/floor";
 import { diffBom } from "../../lib/impact";
 import { getConfigBundle } from "../../lib/queries";
+import { stockByRevision } from "../../lib/domain/inventory";
+import { CreateKitForm } from "../../components/inventory-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +99,7 @@ export default async function FloorPage({
   const standBundle = resolvedStandConfig
     ? getConfigBundle(resolvedStandConfig.id)
     : null;
+  const stock = stockByRevision(db);
 
   const changeDelta =
     view.changedSinceLastRun && resolvedArticleConfig && view.lastRun
@@ -208,7 +211,7 @@ export default async function FloorPage({
             </h2>
             <div className="mt-3">
               <DataTable
-                headers={["Find", "Part", "Rev", "Qty", "Name"]}
+                headers={["Find", "Part", "Rev", "Qty", "On hand", "Name"]}
                 rows={[...articleBundle.bom]
                   .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
                   .map((l) => [
@@ -220,6 +223,7 @@ export default async function FloorPage({
                     </span>,
                     l.revision,
                     String(l.qty),
+                    String(stock.get(l.partRevisionId)?.onHand ?? 0),
                     l.name,
                   ])}
               />
@@ -241,6 +245,17 @@ export default async function FloorPage({
                 )),
             )}
             <Panel>
+              <h2 className="font-display text-xl">Kit this recipe</h2>
+              <p className="mt-1 text-sm text-[var(--muted)]">
+                Reserve lots against {resolvedArticleConfig.key} for{" "}
+                {view.article.serial}, then issue to stamp as-built.
+              </p>
+              <CreateKitForm
+                articleId={view.article.id}
+                configId={resolvedArticleConfig.id}
+              />
+            </Panel>
+            <Panel>
               <h2 className="font-display text-xl">Next step</h2>
               <p className="mt-2 text-sm text-[var(--muted)]">
                 Ready to run? Bind it on the{" "}
@@ -252,6 +267,34 @@ export default async function FloorPage({
             </Panel>
           </div>
         </div>
+      ) : null}
+
+      {standBundle && resolvedStandConfig ? (
+        <Panel className="mt-5">
+          <h2 className="font-display text-xl">
+            Stand recipe: {resolvedStandConfig.key}
+          </h2>
+          <div className="mt-3">
+            <DataTable
+              compact
+              headers={["Find", "Part", "Rev", "Qty", "On hand", "Name"]}
+              rows={[...standBundle.bom]
+                .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
+                .map((l) => [
+                  <span key="f" className="font-mono text-xs">
+                    {l.findNumber}
+                  </span>,
+                  <span key="p" className="font-mono text-xs">
+                    {l.partNumber}
+                  </span>,
+                  l.revision,
+                  String(l.qty),
+                  String(stock.get(l.partRevisionId)?.onHand ?? 0),
+                  l.name,
+                ])}
+            />
+          </div>
+        </Panel>
       ) : null}
     </AppShell>
   );

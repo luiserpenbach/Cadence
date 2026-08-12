@@ -25,19 +25,22 @@ import {
   createConfig,
   createPart,
   createStand,
+  updatePart,
 } from "./domain/authoring";
 import {
+  addBomAlternate,
   addBomLine,
   addEffectivityRow,
   addProcedureLink,
   addRequiredTest,
+  removeBomAlternate,
   removeBomLine,
   removeEffectivityRow,
   removeProcedureLink,
   removeRequiredTest,
   updateBomLine,
 } from "./domain/config-edit";
-import { recordAsBuilt } from "./domain/asbuilt";
+import { recordAsBuilt, reverseAsBuilt } from "./domain/asbuilt";
 import {
   createProcedure,
   createTestDefinition,
@@ -54,6 +57,21 @@ import {
   addLinkAttachment,
   removeAttachment,
 } from "./domain/attachments";
+import { adjustLot, createLot } from "./domain/inventory";
+import {
+  addPurchaseOrderLine,
+  createPurchaseOrder,
+  markPurchaseOrderOrdered,
+  openPoForShortages,
+  receivePurchaseOrder,
+} from "./domain/procurement";
+import {
+  allocateKitLine,
+  cancelKit,
+  createKit,
+  issueKit,
+} from "./domain/kits";
+import { importBomCsv } from "./domain/bom-csv";
 import path from "node:path";
 
 const uploadsDir = path.join(process.cwd(), "data", "uploads");
@@ -352,6 +370,7 @@ const newPartSchema = z.object({
   revision: nonEmpty,
   sourcing: z.enum(s.partSourcings),
   kind: z.enum(s.partKinds),
+  description: z.string().trim(),
 });
 
 export async function createPartAction(
@@ -366,6 +385,7 @@ export async function createPartAction(
     revision: formData.get("revision"),
     sourcing: formData.get("sourcing"),
     kind: formData.get("kind"),
+    description: String(formData.get("description") ?? ""),
   });
   if (!parsed.success) {
     return fail("Part number, name, category, and initial revision are required.");
@@ -563,6 +583,7 @@ const asBuiltSchema = z.object({
   qty: z.coerce.number().positive(),
   serialOrLot: z.string().trim(),
   runId: z.string().trim().optional(),
+  by: z.string().trim().optional(),
 });
 
 export async function recordAsBuiltAction(
@@ -576,6 +597,7 @@ export async function recordAsBuiltAction(
     qty: formData.get("qty"),
     serialOrLot: String(formData.get("serialOrLot") ?? ""),
     runId: String(formData.get("runId") ?? "") || undefined,
+    by: String(formData.get("by") ?? "") || undefined,
   });
   if (!parsed.success) {
     return fail("Part revision and a positive quantity are required.");
@@ -585,6 +607,7 @@ export async function recordAsBuiltAction(
   if (!result.ok) return fail(result.error);
   revalidatePath(`/articles/${parsed.data.articleId}`);
   revalidatePath("/articles");
+  revalidatePath("/inventory");
   return { ok: true, error: "" };
 }
 
@@ -756,6 +779,7 @@ const configEditSchema = z.discriminatedUnion("op", [
     partRevisionId: nonEmpty,
     qty: z.coerce.number().positive(),
     findNumber: z.string().trim(),
+    notes: z.string().trim().optional(),
   }),
   z.object({ op: z.literal("remove_bom"), configId: nonEmpty, bomLineId: nonEmpty }),
   z.object({
@@ -765,6 +789,19 @@ const configEditSchema = z.discriminatedUnion("op", [
     partRevisionId: nonEmpty,
     qty: z.coerce.number().positive(),
     findNumber: z.string().trim(),
+    notes: z.string().trim().optional(),
+  }),
+  z.object({
+    op: z.literal("add_alt"),
+    configId: nonEmpty,
+    bomLineId: nonEmpty,
+    partRevisionId: nonEmpty,
+  }),
+  z.object({
+    op: z.literal("remove_alt"),
+    configId: nonEmpty,
+    bomLineId: nonEmpty,
+    partRevisionId: nonEmpty,
   }),
   z.object({
     op: z.literal("add_test"),
@@ -815,6 +852,7 @@ export async function configEditAction(
     "partRevisionId",
     "qty",
     "findNumber",
+    "notes",
     "bomLineId",
     "testDefinitionId",
     "procedureId",
@@ -843,6 +881,10 @@ export async function configEditAction(
         return removeBomLine(db, input);
       case "update_bom":
         return updateBomLine(db, input);
+      case "add_alt":
+        return addBomAlternate(db, input);
+      case "remove_alt":
+        return removeBomAlternate(db, input);
       case "add_test":
         return addRequiredTest(db, input);
       case "remove_test":
@@ -893,4 +935,333 @@ export async function cutConfigFrom(
 
   revalidatePath("/configs");
   redirect(`/configs/${result.configId}`);
+}
+
+export async function reverseAsBuiltAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const asBuiltId = String(formData.get("asBuiltId") ?? "");
+  const articleId = String(formData.get("articleId") ?? "");
+  const by = String(formData.get("by") ?? "").trim();
+  if (!asBuiltId || !by) return fail("Line and your name are required.");
+  const result = reverseAsBuilt(getDb(), { asBuiltId, by });
+  if (!result.ok) return fail(result.error);
+  if (articleId) revalidatePath(`/articles/${articleId}`);
+  revalidatePath("/inventory");
+  return { ok: true, error: "" };
+}
+
+export async function updatePartAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      partId: nonEmpty,
+      name: nonEmpty,
+      category: nonEmpty,
+      sourcing: z.enum(s.partSourcings),
+      kind: z.enum(s.partKinds),
+      description: z.string().trim(),
+    })
+    .safeParse({
+      partId: formData.get("partId"),
+      name: formData.get("name"),
+      category: formData.get("category"),
+      sourcing: formData.get("sourcing"),
+      kind: formData.get("kind"),
+      description: String(formData.get("description") ?? ""),
+    });
+  if (!parsed.success) return fail("Name and category are required.");
+  const result = updatePart(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/catalog");
+  revalidatePath(`/catalog/${parsed.data.partId}`);
+  return { ok: true, error: "" };
+}
+
+export async function createLotAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      partRevisionId: nonEmpty,
+      qty: z.coerce.number().min(0),
+      lotCode: nonEmpty,
+      location: z.string().trim(),
+      by: nonEmpty,
+      reason: z.string().trim(),
+    })
+    .safeParse({
+      partRevisionId: formData.get("partRevisionId"),
+      qty: formData.get("qty"),
+      lotCode: formData.get("lotCode"),
+      location: String(formData.get("location") ?? ""),
+      by: formData.get("by"),
+      reason: String(formData.get("reason") ?? ""),
+    });
+  if (!parsed.success) {
+    return fail("Part revision, lot code, qty, and your name are required.");
+  }
+  const result = createLot(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/inventory");
+  return { ok: true, error: "", message: "Lot created." };
+}
+
+export async function adjustLotAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      lotId: nonEmpty,
+      qtyDelta: z.coerce.number(),
+      by: nonEmpty,
+      reason: nonEmpty,
+    })
+    .safeParse({
+      lotId: formData.get("lotId"),
+      qtyDelta: formData.get("qtyDelta"),
+      by: formData.get("by"),
+      reason: formData.get("reason"),
+    });
+  if (!parsed.success) {
+    return fail("Lot, adjustment, reason, and your name are required.");
+  }
+  const result = adjustLot(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/inventory");
+  return { ok: true, error: "", message: "Lot adjusted." };
+}
+
+export async function createPoAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      poNumber: nonEmpty,
+      supplier: nonEmpty,
+      notes: z.string().trim(),
+    })
+    .safeParse({
+      poNumber: formData.get("poNumber"),
+      supplier: formData.get("supplier"),
+      notes: String(formData.get("notes") ?? ""),
+    });
+  if (!parsed.success) return fail("PO number and supplier are required.");
+  const result = createPurchaseOrder(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/procurement");
+  return { ok: true, error: "", message: "PO created." };
+}
+
+export async function addPoLineAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      poId: nonEmpty,
+      partRevisionId: nonEmpty,
+      qty: z.coerce.number().positive(),
+      unitCost: z.coerce.number().min(0),
+    })
+    .safeParse({
+      poId: formData.get("poId"),
+      partRevisionId: formData.get("partRevisionId"),
+      qty: formData.get("qty"),
+      unitCost: formData.get("unitCost") ?? 0,
+    });
+  if (!parsed.success) {
+    return fail("Part revision and a positive qty are required.");
+  }
+  const result = addPurchaseOrderLine(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/procurement");
+  return { ok: true, error: "" };
+}
+
+export async function markPoOrderedAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const poId = String(formData.get("poId") ?? "");
+  if (!poId) return fail("PO is required.");
+  const result = markPurchaseOrderOrdered(getDb(), poId);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/procurement");
+  return { ok: true, error: "" };
+}
+
+export async function receivePoAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({ poId: nonEmpty, by: nonEmpty, location: z.string().trim() })
+    .safeParse({
+      poId: formData.get("poId"),
+      by: formData.get("by"),
+      location: String(formData.get("location") ?? ""),
+    });
+  if (!parsed.success) return fail("PO and your name are required to receive.");
+  const result = receivePurchaseOrder(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/procurement");
+  revalidatePath("/inventory");
+  return { ok: true, error: "", message: "Received into stock." };
+}
+
+export async function openShortagePoAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({ configId: nonEmpty, supplier: nonEmpty, by: nonEmpty })
+    .safeParse({
+      configId: formData.get("configId"),
+      supplier: formData.get("supplier"),
+      by: formData.get("by"),
+    });
+  if (!parsed.success) {
+    return fail("Config, supplier, and your name are required.");
+  }
+  const result = openPoForShortages(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/procurement");
+  revalidatePath("/change");
+  redirect("/procurement");
+}
+
+export async function createKitAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      articleId: nonEmpty,
+      configId: nonEmpty,
+      by: nonEmpty,
+      notes: z.string().trim(),
+    })
+    .safeParse({
+      articleId: formData.get("articleId"),
+      configId: formData.get("configId"),
+      by: formData.get("by"),
+      notes: String(formData.get("notes") ?? ""),
+    });
+  if (!parsed.success) {
+    return fail("Article, config, and your name are required.");
+  }
+  const result = createKit(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/kits");
+  revalidatePath("/floor");
+  redirect(`/kits/${result.kitId}`);
+}
+
+export async function allocateKitLineAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      kitLineId: nonEmpty,
+      lotId: nonEmpty,
+      by: nonEmpty,
+      kitId: nonEmpty,
+    })
+    .safeParse({
+      kitLineId: formData.get("kitLineId"),
+      lotId: formData.get("lotId"),
+      by: formData.get("by"),
+      kitId: formData.get("kitId"),
+    });
+  if (!parsed.success) return fail("Lot and your name are required.");
+  const result = allocateKitLine(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath(`/kits/${parsed.data.kitId}`);
+  revalidatePath("/inventory");
+  return { ok: true, error: "" };
+}
+
+export async function issueKitAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({ kitId: nonEmpty, by: nonEmpty, articleId: z.string().trim() })
+    .safeParse({
+      kitId: formData.get("kitId"),
+      by: formData.get("by"),
+      articleId: String(formData.get("articleId") ?? ""),
+    });
+  if (!parsed.success) return fail("Your name is required to issue.");
+  const result = issueKit(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath(`/kits/${parsed.data.kitId}`);
+  revalidatePath("/inventory");
+  if (parsed.data.articleId) {
+    revalidatePath(`/articles/${parsed.data.articleId}`);
+  }
+  return { ok: true, error: "", message: "Kit issued — as-built stamped." };
+}
+
+export async function cancelKitAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({ kitId: nonEmpty, by: nonEmpty })
+    .safeParse({
+      kitId: formData.get("kitId"),
+      by: formData.get("by"),
+    });
+  if (!parsed.success) return fail("Your name is required to cancel.");
+  const result = cancelKit(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath(`/kits/${parsed.data.kitId}`);
+  revalidatePath("/kits");
+  revalidatePath("/inventory");
+  return { ok: true, error: "", message: "Kit cancelled." };
+}
+
+export async function importBomCsvAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const configId = String(formData.get("configId") ?? "");
+  if (!configId) return fail("Config is required.");
+  const file = formData.get("file");
+  let csv = String(formData.get("csv") ?? "");
+  if (file instanceof File && file.size > 0) {
+    csv = await file.text();
+  }
+  if (!csv.trim()) return fail("Paste CSV or choose a file.");
+  const result = importBomCsv(getDb(), { configId, csv });
+  if (!result.ok) return fail(result.error);
+  revalidatePath(`/configs/${configId}`);
+  return {
+    ok: true,
+    error: "",
+    message: `Imported ${result.added} new pin(s), updated ${result.updated}.`,
+  };
 }

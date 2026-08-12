@@ -87,14 +87,24 @@ describe("buildImpactReport", () => {
     expect(delta.to.key).toBe("CFG-M1");
   });
 
-  it("lists articles below the serial cut-in using numeric order (B6)", () => {
+  it("lists articles covered by from but not to, including explicit lists", () => {
     const from = makeConfig(db, "CFG-N");
     const to = makeConfig(db, "CFG-N1");
     db.insert(s.configEffectivity)
       .values({
         id: id("eff"),
+        configId: from,
+        articleScope: "any",
+        standScope: "any",
+      })
+      .run();
+    db.insert(s.configEffectivity)
+      .values({
+        id: id("eff2"),
         configId: to,
+        articleScope: "serial_range",
         serialFrom: "TP-14",
+        standScope: "any",
       })
       .run();
 
@@ -104,7 +114,38 @@ describe("buildImpactReport", () => {
 
     const report = buildImpactReport(from, to);
     expect(report).not.toBeNull();
-    // Lexicographic comparison would have put TP-9 "after" TP-14 and missed it.
     expect(report!.articlesOnPrior.map((a) => a.serial)).toEqual(["TP-9"]);
+    expect(report!.kitCount).toBe(2);
+  });
+
+  it("counts explicit effectivity articles as kits and lists the rest on prior", () => {
+    const from = makeConfig(db, "CFG-N");
+    const to = makeConfig(db, "CFG-N1");
+    db.insert(s.configEffectivity)
+      .values({
+        id: id("eff"),
+        configId: from,
+        articleScope: "any",
+        standScope: "any",
+      })
+      .run();
+    const toEff = id("eff2");
+    db.insert(s.configEffectivity)
+      .values({
+        id: toEff,
+        configId: to,
+        articleScope: "explicit",
+        standScope: "any",
+      })
+      .run();
+    const a17 = makeArticle(db, "TP-017");
+    makeArticle(db, "TP-014");
+    db.insert(s.configEffectivityArticles)
+      .values({ id: id("efa"), effectivityId: toEff, articleId: a17 })
+      .run();
+
+    const report = buildImpactReport(from, to)!;
+    expect(report.kitCount).toBe(1);
+    expect(report.articlesOnPrior.map((a) => a.serial)).toEqual(["TP-014"]);
   });
 });

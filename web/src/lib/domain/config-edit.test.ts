@@ -121,6 +121,15 @@ describe("draft config editing", () => {
     expect(updated.findNumber).toBe("15");
 
     expect(
+      addBomLine(db, {
+        configId: draftId,
+        partRevisionId: revId,
+        qty: 1,
+        findNumber: "15",
+      }).ok,
+    ).toBe(false);
+
+    expect(
       updateBomLine(db, {
         configId: releasedId,
         bomLineId: line.id,

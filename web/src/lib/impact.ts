@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import * as s from "../db/schema";
 import { compareSerials } from "./serial";
+import { configCoversArticle } from "./domain/effectivity";
+import { inboundByRevision, stockByRevision } from "./domain/inventory";
 
 export type BomPin = {
   partRevisionId: string;
@@ -10,6 +12,7 @@ export type BomPin = {
   name: string;
   qty: number;
   findNumber: string;
+  notes: string;
 };
 
 export type BomDelta =
@@ -39,6 +42,7 @@ export function getConfigBom(configId: string): BomPin[] {
       partRevisionId: s.configBomLines.partRevisionId,
       qty: s.configBomLines.qty,
       findNumber: s.configBomLines.findNumber,
+      notes: s.configBomLines.notes,
       revision: s.partRevisions.revision,
       partNumber: s.parts.partNumber,
       name: s.parts.name,
@@ -59,6 +63,7 @@ export function getConfigBom(configId: string): BomPin[] {
     name: r.name,
     qty: r.qty,
     findNumber: r.findNumber,
+    notes: r.notes,
   }));
 }
 
@@ -168,7 +173,10 @@ export type ImpactReport = {
     revision: string;
     needed: number;
     onHand: number;
+    inbound: number;
+    short: number;
   }>;
+  kitCount: number;
   articlesOnPrior: Array<{ serial: string; name: string }>;
   staleTestHint: string;
 };
@@ -194,44 +202,39 @@ export function buildImpactReport(
   const testDiff = diffRequiredTests(fromConfigId, toConfigId);
 
   const toBom = getConfigBom(toConfigId);
+  const articles = db.select().from(s.articles).all();
+  const kitCount = Math.max(
+    articles.filter((a) => configCoversArticle(db, toConfigId, a)).length,
+    1,
+  );
+  const stock = stockByRevision(db);
+  const inbound = inboundByRevision(db);
   const inventoryShortages = [];
   for (const line of toBom) {
-    const lots = db
-      .select()
-      .from(s.inventoryLots)
-      .where(eq(s.inventoryLots.partRevisionId, line.partRevisionId))
-      .all();
-    const onHand = lots.reduce((sum, l) => sum + l.qtyOnHand, 0);
-    if (onHand < line.qty) {
+    const onHand = stock.get(line.partRevisionId)?.onHand ?? 0;
+    const inboundQty = inbound.get(line.partRevisionId) ?? 0;
+    const needed = line.qty * kitCount;
+    const short = Math.max(0, needed - onHand - inboundQty);
+    if (short > 0 || onHand + inboundQty < needed) {
       inventoryShortages.push({
         partNumber: line.partNumber,
         revision: line.revision,
-        needed: line.qty,
+        needed,
         onHand,
+        inbound: inboundQty,
+        short,
       });
     }
   }
 
-  // Articles below every serial cut-in point of `to` stay on the prior config.
-  const toEffectivity = db
-    .select()
-    .from(s.configEffectivity)
-    .where(eq(s.configEffectivity.configId, toConfigId))
-    .all();
-  const cutIns = toEffectivity
-    .map((e) => e.serialFrom)
-    .filter((sf): sf is string => Boolean(sf));
-  const articlesOnPrior =
-    cutIns.length === 0
-      ? []
-      : db
-          .select({
-            serial: s.articles.serial,
-            name: s.articles.name,
-          })
-          .from(s.articles)
-          .all()
-          .filter((a) => cutIns.every((sf) => compareSerials(a.serial, sf) < 0));
+  const articlesOnPrior = articles
+    .filter(
+      (a) =>
+        configCoversArticle(db, fromConfigId, a) &&
+        !configCoversArticle(db, toConfigId, a),
+    )
+    .map((a) => ({ serial: a.serial, name: a.name }))
+    .sort((a, b) => compareSerials(a.serial, b.serial));
 
   return {
     from,
@@ -239,6 +242,7 @@ export function buildImpactReport(
     bomDeltas,
     testDiff,
     inventoryShortages,
+    kitCount,
     articlesOnPrior,
     staleTestHint:
       "Tests shared between configs should be treated as stale for articles moving to the new config until re-run.",
