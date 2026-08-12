@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   addPoLineAction,
   adjustLotAction,
@@ -289,7 +289,13 @@ export function UnallocateKitLineForm({
   );
 }
 
-export function AllocateRemainingForm({ kitId }: { kitId: string }) {
+export function AllocateRemainingForm({
+  kitId,
+  by,
+}: {
+  kitId: string;
+  by?: string;
+}) {
   const [state, formAction, pending] = useActionState(
     allocateRemainingAction,
     initialState,
@@ -298,7 +304,11 @@ export function AllocateRemainingForm({ kitId }: { kitId: string }) {
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="kitId" value={kitId} />
-      <input name="by" defaultValue="m.chen" className={inputClass} />
+      {by ? (
+        <input type="hidden" name="by" value={by} />
+      ) : (
+        <input name="by" defaultValue="m.chen" className={inputClass} />
+      )}
       <ActionError state={state} />
       <ActionMessage state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
@@ -327,16 +337,23 @@ export function KitLifecycleButtons({
   );
   useRefreshOnOk(issueState);
   useRefreshOnOk(cancelState);
+  const [by, setBy] = useState("m.chen");
   return (
     <div className="space-y-3">
+      <input
+        value={by}
+        onChange={(e) => setBy(e.target.value)}
+        className={inputClass}
+        aria-label="Identity"
+      />
       {status === "open" || status === "reserved" ? (
-        <AllocateRemainingForm kitId={kitId} />
+        <AllocateRemainingForm kitId={kitId} by={by} />
       ) : null}
       {status === "open" || status === "reserved" ? (
         <form action={issueAction} className="space-y-2">
           <input type="hidden" name="kitId" value={kitId} />
           <input type="hidden" name="articleId" value={articleId} />
-          <input name="by" defaultValue="m.chen" className={inputClass} />
+          <input type="hidden" name="by" value={by} />
           <ActionError state={issueState} />
           <ActionMessage state={issueState} />
           <button type="submit" disabled={issuePending} className={buttonClass}>
@@ -347,7 +364,7 @@ export function KitLifecycleButtons({
       {status !== "issued" && status !== "cancelled" ? (
         <form action={cancelAction} className="space-y-2">
           <input type="hidden" name="kitId" value={kitId} />
-          <input name="by" defaultValue="m.chen" className={inputClass} />
+          <input type="hidden" name="by" value={by} />
           <ActionError state={cancelState} />
           <ActionMessage state={cancelState} />
           <button type="submit" disabled={cancelPending} className={subtleButtonClass}>

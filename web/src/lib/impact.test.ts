@@ -54,6 +54,23 @@ describe("diffBom", () => {
     expect(deltas.filter((d) => d.type === "added")).toHaveLength(1);
     expect(deltas.filter((d) => d.type === "removed")).toHaveLength(1);
   });
+
+  it("reports a part swap on the same find number", () => {
+    const orifice070 = makePart(db, "ORF-070");
+    const orifice085 = makePart(db, "ORF-085");
+    const from = makeConfig(db, "CFG-N");
+    const to = makeConfig(db, "CFG-N1");
+    addBomLine(db, from, orifice070.revId, 1, "20");
+    addBomLine(db, to, orifice085.revId, 1, "20");
+    const changed = diffBom(from, to).filter((d) => d.type === "changed");
+    expect(changed).toHaveLength(1);
+    expect(changed[0]).toMatchObject({
+      fromPartNumber: "ORF-070",
+      toPartNumber: "ORF-085",
+      fromRevision: "A",
+      toRevision: "A",
+    });
+  });
 });
 
 describe("buildImpactReport", () => {

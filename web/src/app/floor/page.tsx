@@ -189,7 +189,9 @@ export default async function FloorPage({
                 </span>,
                 d.type === "changed" ? (
                   <span key="d">
-                    rev {d.fromRevision}→{d.toRevision}
+                    {d.fromPartNumber !== d.toPartNumber
+                      ? `${d.fromPartNumber}@${d.fromRevision} → ${d.toPartNumber}@${d.toRevision}`
+                      : `rev ${d.fromRevision}→${d.toRevision}`}
                     {d.fromQty !== d.toQty ? ` · qty ${d.fromQty}→${d.toQty}` : ""}
                   </span>
                 ) : (

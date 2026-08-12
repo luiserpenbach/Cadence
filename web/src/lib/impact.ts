@@ -29,6 +29,8 @@ export type BomDelta =
       findNumber: string;
       partNumber: string;
       name: string;
+      fromPartNumber: string;
+      toPartNumber: string;
       fromRevision: string;
       toRevision: string;
       fromQty: number;
@@ -95,6 +97,8 @@ export function diffBom(fromId: string, toId: string): BomDelta[] {
         findNumber: line.findNumber,
         partNumber: line.partNumber,
         name: line.name,
+        fromPartNumber: prev.partNumber,
+        toPartNumber: line.partNumber,
         fromRevision: prev.revision,
         toRevision: line.revision,
         fromQty: prev.qty,

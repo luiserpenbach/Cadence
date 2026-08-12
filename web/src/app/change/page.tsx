@@ -136,7 +136,10 @@ export default async function ChangePage({
                 </span>,
                 d.type === "changed" ? (
                   <span key="d">
-                    {d.name}: rev {d.fromRevision}→{d.toRevision}
+                    {d.name}:{" "}
+                    {d.fromPartNumber !== d.toPartNumber
+                      ? `${d.fromPartNumber}@${d.fromRevision} → ${d.toPartNumber}@${d.toRevision}`
+                      : `rev ${d.fromRevision}→${d.toRevision}`}
                     {d.fromQty !== d.toQty
                       ? ` · qty ${d.fromQty}→${d.toQty}`
                       : ""}
