@@ -12,3 +12,4 @@ Single-service app. All commands run from `web/` (Node 22). Standard scripts liv
 - Storage is local SQLite at `web/data/cadence.db` (gitignored). Migrations in `web/drizzle/` run automatically on first request via `ensureAppData()`, so no manual migrate step is needed to boot the app.
 - A fresh DB starts empty. Load the CH4-feed demo dataset with `npm run db:seed` (idempotent: seeds only if empty). Deleting `web/data/cadence.db*` resets to empty.
 - No environment variables or external services are required.
+- Mutating UI actions (work orders, kits, receive, as-built, etc.) require an identity. Set the header **You** field before submitting those forms; it persists in localStorage/cookie. Catalog create/CSV import do not need it.
