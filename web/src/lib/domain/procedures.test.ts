@@ -52,6 +52,22 @@ describe("procedures & test definitions", () => {
     ).toBe(false);
   });
 
+  it("stores unit and pass/fail limits on a test definition", () => {
+    expect(
+      createTestDefinition(db, {
+        key: "THRUST",
+        name: "Thrust",
+        description: "",
+        appliesTo: "article",
+        unit: "N",
+        limitMin: 47,
+        limitMax: 53,
+      }).ok,
+    ).toBe(true);
+    const stored = db.select().from(s.testDefinitions).all()[0];
+    expect(stored).toMatchObject({ unit: "N", limitMin: 47, limitMax: 53 });
+  });
+
   it("revising keeps the old version row and bumps the version", () => {
     const created = createProcedure(db, {
       key: "PROC-1",

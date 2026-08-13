@@ -9,6 +9,9 @@ export type VerificationGap = {
   source: "article" | "stand";
   status: "missing" | "fail" | "stale" | "waived";
   detail: string;
+  unit: string;
+  limitMin: number | null;
+  limitMax: number | null;
   // covered by an explicit gap acknowledgment for this (test, status)
   acknowledged: boolean;
 };
@@ -39,6 +42,9 @@ export function getRunVerification(runId: string): VerificationReport {
       id: s.testDefinitions.id,
       key: s.testDefinitions.key,
       name: s.testDefinitions.name,
+      unit: s.testDefinitions.unit,
+      limitMin: s.testDefinitions.limitMin,
+      limitMax: s.testDefinitions.limitMax,
     })
     .from(s.configRequiredTests)
     .innerJoin(
@@ -54,6 +60,9 @@ export function getRunVerification(runId: string): VerificationReport {
       id: s.testDefinitions.id,
       key: s.testDefinitions.key,
       name: s.testDefinitions.name,
+      unit: s.testDefinitions.unit,
+      limitMin: s.testDefinitions.limitMin,
+      limitMax: s.testDefinitions.limitMax,
     })
     .from(s.configRequiredTests)
     .innerJoin(
@@ -119,6 +128,9 @@ export function getRunVerification(runId: string): VerificationReport {
       source: t.source,
       status,
       detail,
+      unit: t.unit,
+      limitMin: t.limitMin,
+      limitMax: t.limitMax,
       acknowledged: ackedPairs.has(`${t.id}:${status}`),
     });
   };
@@ -183,6 +195,7 @@ export function getConfigBundle(configId: string) {
       revision: s.partRevisions.revision,
       partNumber: s.parts.partNumber,
       name: s.parts.name,
+      sourcing: s.parts.sourcing,
       partRevisionId: s.partRevisions.id,
     })
     .from(s.configBomLines)
@@ -199,6 +212,9 @@ export function getConfigBundle(configId: string) {
       id: s.testDefinitions.id,
       key: s.testDefinitions.key,
       name: s.testDefinitions.name,
+      unit: s.testDefinitions.unit,
+      limitMin: s.testDefinitions.limitMin,
+      limitMax: s.testDefinitions.limitMax,
       description: s.testDefinitions.description,
     })
     .from(s.configRequiredTests)

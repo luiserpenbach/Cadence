@@ -9,6 +9,7 @@ import {
   NewPartForm,
   NewRevisionForm,
 } from "../../components/authoring-forms";
+import { ImportCatalogForm } from "../../components/inventory-forms";
 import { stockByRevision } from "../../lib/domain/inventory";
 
 export const dynamic = "force-dynamic";
@@ -117,6 +118,13 @@ export default async function CatalogPage({
           <Panel>
             <h2 className="font-display">New part</h2>
             <NewPartForm />
+          </Panel>
+          <Panel>
+            <h2 className="font-display">Bulk import</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Header: part, name, rev, category, sourcing, kind, description
+            </p>
+            <ImportCatalogForm />
           </Panel>
           <Panel>
             <h2 className="font-display">New revision</h2>

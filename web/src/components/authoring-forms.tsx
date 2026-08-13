@@ -11,6 +11,8 @@ import {
   createProcedureAction,
   createStandAction,
   createTestDefinitionAction,
+  createAndPinProcedureAction,
+  createAndPinTestAction,
   cutInRevisionAction,
   recordAsBuiltAction,
   removeAttachmentAction,
@@ -19,6 +21,7 @@ import {
   type ActionState,
 } from "../lib/actions";
 import { PartRevPicker, useRefreshOnOk } from "./pickers";
+import { IdentityField } from "./identity";
 import { buttonClass, compactInputClass, inputClass, subtleButtonClass } from "./ui";
 
 const initialState: ActionState = { ok: false, error: "" };
@@ -129,11 +132,7 @@ export function AttachmentForms({
           />
         </div>
         <div className="flex gap-2">
-          <input
-            name="by"
-            defaultValue="m.chen"
-            className={`w-32 ${inputClass}`}
-          />
+          <IdentityField className={`w-32 ${inputClass}`} />
           <button
             type="submit"
             disabled={linkPending}
@@ -160,11 +159,7 @@ export function AttachmentForms({
             placeholder="Label (optional)"
             className={inputClass}
           />
-          <input
-            name="by"
-            defaultValue="m.chen"
-            className={`w-32 ${inputClass}`}
-          />
+          <IdentityField className={`w-32 ${inputClass}`} />
           <button
             type="submit"
             disabled={filePending}
@@ -322,6 +317,12 @@ export function NewConfigForm() {
           ))}
         </select>
       </div>
+      <input name="program" placeholder="Program (e.g. ACS-THR)" className={inputClass} />
+      <input
+        name="envelope"
+        placeholder="Envelope (e.g. 50 N · 1.2 MPa Pc)"
+        className={inputClass}
+      />
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Create empty draft
@@ -371,7 +372,7 @@ export function AsBuiltForm({
           </option>
         ))}
       </select>
-      <input name="by" defaultValue="m.chen" className={inputClass} />
+      <IdentityField />
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Record as-built line
@@ -466,6 +467,11 @@ export function NewTestDefForm() {
         <option value="stand">stand</option>
         <option value="either">either</option>
       </select>
+      <div className="flex gap-2">
+        <input name="unit" placeholder="Unit (N, kPa…)" className={inputClass} />
+        <input name="limitMin" type="number" step="any" placeholder="Min" className={inputClass} />
+        <input name="limitMax" type="number" step="any" placeholder="Max" className={inputClass} />
+      </div>
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Create test definition
@@ -596,6 +602,7 @@ export function ConfigEditButton({
     configEditAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="inline">
       {Object.entries(payload).map(([k, v]) => (
@@ -717,6 +724,7 @@ export function AddLinkForm({
     configEditAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="op" value={op} />
@@ -751,6 +759,7 @@ export function AddEffectivityForm({
     configEditAction,
     initialState,
   );
+  useRefreshOnOk(state);
   const [articleScope, setArticleScope] = useState("any");
   const [standScope, setStandScope] = useState("any");
   return (
@@ -764,9 +773,9 @@ export function AddEffectivityForm({
           onChange={(e) => setArticleScope(e.target.value)}
           className={inputClass}
         >
-          <option value="any">any article</option>
+          <option value="any">all serials</option>
           <option value="serial_range">serial range</option>
-          <option value="explicit">explicit articles</option>
+          <option value="explicit">these serials</option>
         </select>
         <select
           name="standScope"
@@ -774,8 +783,8 @@ export function AddEffectivityForm({
           onChange={(e) => setStandScope(e.target.value)}
           className={inputClass}
         >
-          <option value="any">any stand</option>
-          <option value="explicit">explicit stand</option>
+          <option value="any">any cell</option>
+          <option value="explicit">this cell</option>
         </select>
       </div>
       {articleScope === "serial_range" ? (
@@ -813,6 +822,63 @@ export function AddEffectivityForm({
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={subtleButtonClass}>
         Add effectivity
+      </button>
+    </form>
+  );
+}
+
+export function CreateAndPinTestForm({ configId }: { configId: string }) {
+  const [state, formAction, pending] = useActionState(
+    createAndPinTestAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  return (
+    <form action={formAction} className="mt-4 space-y-2 border-t border-[var(--line)] pt-3">
+      <input type="hidden" name="configId" value={configId} />
+      <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted)]">
+        New test on this config
+      </div>
+      <div className="flex gap-2">
+        <input name="key" required placeholder="Key" className={`font-mono ${inputClass}`} />
+        <input name="name" required placeholder="Name" className={inputClass} />
+      </div>
+      <div className="flex gap-2">
+        <input name="unit" placeholder="Unit" className={inputClass} />
+        <input name="limitMin" type="number" step="any" placeholder="Min" className={inputClass} />
+        <input name="limitMax" type="number" step="any" placeholder="Max" className={inputClass} />
+      </div>
+      <input type="hidden" name="appliesTo" value="article" />
+      <ActionError state={state} />
+      <ActionMessage state={state} />
+      <button type="submit" disabled={pending} className={subtleButtonClass}>
+        Create &amp; pin
+      </button>
+    </form>
+  );
+}
+
+export function CreateAndPinProcedureForm({ configId }: { configId: string }) {
+  const [state, formAction, pending] = useActionState(
+    createAndPinProcedureAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  return (
+    <form action={formAction} className="mt-4 space-y-2 border-t border-[var(--line)] pt-3">
+      <input type="hidden" name="configId" value={configId} />
+      <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted)]">
+        New procedure on this config
+      </div>
+      <div className="flex gap-2">
+        <input name="key" required placeholder="Key" className={`font-mono ${inputClass}`} />
+        <input name="title" required placeholder="Title" className={inputClass} />
+      </div>
+      <textarea name="body" placeholder="Steps…" className={`min-h-16 ${inputClass}`} />
+      <ActionError state={state} />
+      <ActionMessage state={state} />
+      <button type="submit" disabled={pending} className={subtleButtonClass}>
+        Create &amp; link
       </button>
     </form>
   );

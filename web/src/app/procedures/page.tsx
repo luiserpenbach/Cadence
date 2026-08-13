@@ -84,6 +84,13 @@ export default function ProceduresPage() {
                   </span>
                   <span>{t.name}</span>
                   <Badge tone="neutral">{t.appliesTo}</Badge>
+                  {t.unit || t.limitMin != null || t.limitMax != null ? (
+                    <span className="font-mono text-xs text-[var(--muted)]">
+                      {t.limitMin != null || t.limitMax != null
+                        ? `${t.limitMin ?? "…"}–${t.limitMax ?? "…"}${t.unit ? ` ${t.unit}` : ""}`
+                        : t.unit}
+                    </span>
+                  ) : null}
                 </li>
               ))}
               {testDefs.length === 0 ? (

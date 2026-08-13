@@ -28,30 +28,45 @@ export default function HomePage() {
         <Panel>
           <ol className="space-y-2 text-sm text-[var(--muted)]">
             <li>
-              1. Add parts in the{" "}
+              1. Load parts in the{" "}
               <Link className="underline" href="/catalog">
                 Catalog
-              </Link>
+              </Link>{" "}
+              (one-by-one or CSV).
             </li>
             <li>
-              2. Create and release a config on{" "}
+              2. Register hardware on{" "}
+              <Link className="underline" href="/articles">
+                Articles
+              </Link>{" "}
+              and the cell on{" "}
+              <Link className="underline" href="/stands">
+                Stands
+              </Link>
+              .
+            </li>
+            <li>
+              3. Write procedures and test defs (with units and limits) on{" "}
+              <Link className="underline" href="/procedures">
+                Procedures
+              </Link>
+              .
+            </li>
+            <li>
+              4. Pin a BoM, tests, procedures, and effectivity on{" "}
               <Link className="underline" href="/configs">
                 Configs
               </Link>
+              , then release.
             </li>
             <li>
-              3. Bind a run on{" "}
-              <Link className="underline" href="/runs">
-                Runs
+              5. Kit, buy, and make from the{" "}
+              <Link className="underline" href="/floor">
+                Floor
               </Link>
+              . Bind a run when you fire.
             </li>
           </ol>
-          <p className="mt-4 text-sm text-[var(--muted)]">
-            Or load demo data:{" "}
-            <code className="border border-[var(--line)] bg-[var(--panel-strong)] px-1.5 py-0.5 font-mono text-xs">
-              npm run db:seed
-            </code>
-          </p>
         </Panel>
       </AppShell>
     );

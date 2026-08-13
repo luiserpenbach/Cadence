@@ -2,9 +2,21 @@ import type { Db } from "../db";
 import * as s from "../db/schema";
 import { id } from "../lib/id";
 
-export function makePart(db: Db, partNumber: string, revision = "A") {
+export function makePart(
+  db: Db,
+  partNumber: string,
+  revision = "A",
+  opts?: { sourcing?: string; name?: string },
+) {
   const partId = id("part");
-  db.insert(s.parts).values({ id: partId, partNumber, name: partNumber }).run();
+  db.insert(s.parts)
+    .values({
+      id: partId,
+      partNumber,
+      name: opts?.name ?? partNumber,
+      sourcing: opts?.sourcing ?? "buy",
+    })
+    .run();
   const revId = id("rev");
   db.insert(s.partRevisions)
     .values({ id: revId, partId, revision })

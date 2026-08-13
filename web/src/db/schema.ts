@@ -104,6 +104,10 @@ export const configurations = sqliteTable(
     status: text("status").notNull().default("draft"),
     riskClass: text("risk_class").notNull().default("R1"),
     basedOnConfigId: text("based_on_config_id"),
+    // Family this config belongs to, e.g. ACS-THR. Empty = ungrouped.
+    program: text("program").notNull().default(""),
+    // Human operating envelope, e.g. "50 N · 1.2 MPa Pc".
+    envelope: text("envelope").notNull().default(""),
     notes: text("notes").notNull().default(""),
     releasedAt: text("released_at"),
     releasedBy: text("released_by"),
@@ -197,6 +201,9 @@ export const testDefinitions = sqliteTable(
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
     appliesTo: text("applies_to").notNull().default("article"), // article | stand | either
+    unit: text("unit").notNull().default(""),
+    limitMin: real("limit_min"),
+    limitMax: real("limit_max"),
   },
   (t) => [uniqueIndex("test_definitions_key_uidx").on(t.key)],
 );
@@ -392,6 +399,38 @@ export const inventoryMovements = sqliteTable("inventory_movements", {
     .default(sql`(datetime('now'))`),
 });
 
+export const workOrderStatuses = [
+  "open",
+  "in_progress",
+  "complete",
+  "cancelled",
+] as const;
+export type WorkOrderStatus = (typeof workOrderStatuses)[number];
+
+export const workOrders = sqliteTable(
+  "work_orders",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull(),
+    partRevisionId: text("part_revision_id")
+      .notNull()
+      .references(() => partRevisions.id),
+    qty: real("qty").notNull().default(1),
+    status: text("status").notNull().default("open"),
+    location: text("location").notNull().default("SHOP"),
+    lotCode: text("lot_code").notNull().default(""),
+    notes: text("notes").notNull().default(""),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    completedAt: text("completed_at"),
+    completedBy: text("completed_by"),
+    lotId: text("lot_id").references(() => inventoryLots.id),
+  },
+  (t) => [uniqueIndex("work_orders_key_uidx").on(t.key)],
+);
+
 export const kitStatuses = ["open", "reserved", "issued", "cancelled"] as const;
 export type KitStatus = (typeof kitStatuses)[number];
 
@@ -465,6 +504,8 @@ export const purchaseOrders = sqliteTable(
       .default(sql`(datetime('now'))`),
     receivedAt: text("received_at"),
     receivedBy: text("received_by"),
+    certUrl: text("cert_url").notNull().default(""),
+    certNotes: text("cert_notes").notNull().default(""),
   },
   (t) => [uniqueIndex("purchase_orders_po_number_uidx").on(t.poNumber)],
 );

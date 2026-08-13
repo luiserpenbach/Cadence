@@ -17,7 +17,8 @@ import {
   waiveTest,
   type ActionState,
 } from "../lib/actions";
-import { buttonClass, compactInputClass, inputClass, subtleButtonClass } from "./ui";
+import { buttonClass, inputClass, subtleButtonClass } from "./ui";
+import { IdentityField } from "./identity";
 
 const initialState: ActionState = { ok: false, error: "" };
 
@@ -38,7 +39,7 @@ export function AckGapsForm({ runId }: { runId: string }) {
   return (
     <form action={formAction} className="mt-4 space-y-2">
       <input type="hidden" name="runId" value={runId} />
-      <input name="by" defaultValue="m.chen" className={inputClass} />
+      <IdentityField />
       <textarea
         name="reason"
         required
@@ -62,7 +63,13 @@ export function RecordTestForm({
   missing,
 }: {
   runId: string;
-  missing: Array<{ testDefinitionId: string; key: string }>;
+  missing: Array<{
+    testDefinitionId: string;
+    key: string;
+    unit?: string;
+    limitMin?: number | null;
+    limitMax?: number | null;
+  }>;
 }) {
   const [state, formAction, pending] = useActionState(
     recordTestResult,
@@ -72,11 +79,20 @@ export function RecordTestForm({
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="runId" value={runId} />
       <select name="testDefinitionId" className={inputClass}>
-        {missing.map((g) => (
-          <option key={g.testDefinitionId} value={g.testDefinitionId}>
-            {g.key}
-          </option>
-        ))}
+        {missing.map((g) => {
+          const limits =
+            g.limitMin != null || g.limitMax != null
+              ? ` [${g.limitMin ?? "…"}–${g.limitMax ?? "…"}${g.unit ? ` ${g.unit}` : ""}]`
+              : g.unit
+                ? ` (${g.unit})`
+                : "";
+          return (
+            <option key={g.testDefinitionId} value={g.testDefinitionId}>
+              {g.key}
+              {limits}
+            </option>
+          );
+        })}
       </select>
       <select name="status" className={inputClass} defaultValue="pass">
         <option value="pass">pass</option>
@@ -85,11 +101,17 @@ export function RecordTestForm({
       </select>
       <input
         name="value"
-        placeholder="Measured value / notes"
+        placeholder="Measured value (number + unit ok)"
         className={inputClass}
       />
-      <input name="by" defaultValue="tech.lee" className={inputClass} />
+      <p className="text-xs text-[var(--muted)]">
+        If the test has limits, pass/fail is taken from the measured number.
+      </p>
+      <IdentityField />
       <ActionError state={state} />
+      {state.ok && state.message ? (
+        <p className="msg-ok">{state.message}</p>
+      ) : null}
       <button
         type="submit"
         disabled={pending}
@@ -188,11 +210,7 @@ export function StartExecutionForm({
     <form action={formAction} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="runId" value={runId} />
       <input type="hidden" name="procedureId" value={procedureId} />
-      <input
-        name="by"
-        defaultValue="tech.lee"
-        className={`w-28 ${compactInputClass}`}
-      />
+      <IdentityField compact />
       <button
         type="submit"
         disabled={pending}
@@ -242,7 +260,7 @@ export function RecordStepForm({
         placeholder="Note (required for skipped/flagged)"
         className={inputClass}
       />
-      <input name="by" defaultValue="tech.lee" className={inputClass} />
+      <IdentityField />
       <ActionError state={state} />
       <button
         type="submit"
@@ -277,11 +295,7 @@ export function AbortExecutionForm({
           placeholder="Abort reason"
           className={inputClass}
         />
-        <input
-          name="by"
-          defaultValue="tech.lee"
-          className={`w-32 ${inputClass}`}
-        />
+        <IdentityField className={`w-32 ${inputClass}`} />
       </div>
       <ActionError state={state} />
       <button
@@ -319,12 +333,7 @@ export function WaiverForm({
         placeholder="Waiver reason"
         className={inputClass}
       />
-      <input
-        name="approvedBy"
-        required
-        placeholder="Approved by"
-        className={inputClass}
-      />
+      <IdentityField name="approvedBy" placeholder="Approved by" />
       <ActionError state={state} />
       <button
         type="submit"
@@ -341,17 +350,13 @@ function SupersedeChoice({ hasBase }: { hasBase: boolean }) {
   if (!hasBase) return null;
   return (
     <label className="flex items-start gap-2 text-sm">
-      <input
-        type="checkbox"
-        name="supersedeBase"
-        defaultChecked
-        className="mt-0.5"
-      />
+      <input type="checkbox" name="supersedeBase" className="mt-0.5" />
       <span>
         Supersede the base config
         <span className="block text-xs text-[var(--muted)]">
-          Uncheck for a partial cut-in — the base stays live for serials this
-          config doesn&apos;t cover. Keep effectivities from overlapping.
+          Leave unchecked to keep the parent live — a 70 N variant does not
+          retire 50 N. Check only when this cut replaces the parent
+          everywhere. Partition effectivity so they don&apos;t overlap.
         </span>
       </span>
     </label>
@@ -372,12 +377,7 @@ export function ReleaseConfigForm({
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="configId" value={configId} />
-      <input
-        name="by"
-        placeholder="Released by"
-        defaultValue="m.chen"
-        className={inputClass}
-      />
+      <IdentityField placeholder="Released by" />
       <SupersedeChoice hasBase={hasBase} />
       <ActionError state={state} />
       <button
@@ -399,12 +399,7 @@ export function RequestReleaseForm({ configId }: { configId: string }) {
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="configId" value={configId} />
-      <input
-        name="by"
-        placeholder="Requested by"
-        defaultValue="m.chen"
-        className={inputClass}
-      />
+      <IdentityField placeholder="Requested by" />
       <ActionError state={state} />
       <button
         type="submit"
@@ -438,11 +433,9 @@ export function ApproveReleaseForm({
     <div className="mt-3 space-y-3">
       <form action={approveAction} className="space-y-2">
         <input type="hidden" name="configId" value={configId} />
-        <input
+        <IdentityField
           name="reviewer"
-          required
           placeholder={`Reviewer (not ${requestedBy})`}
-          className={inputClass}
         />
         <SupersedeChoice hasBase={hasBase} />
         <ActionError state={approveState} />
@@ -473,7 +466,13 @@ export function CutConfigForm({
   configs,
   defaultBasedOnId,
 }: {
-  configs: Array<{ id: string; key: string; kind: string }>;
+  configs: Array<{
+    id: string;
+    key: string;
+    kind: string;
+    program?: string;
+    envelope?: string;
+  }>;
   defaultBasedOnId?: string;
 }) {
   const [state, formAction, pending] = useActionState(
@@ -514,6 +513,16 @@ export function CutConfigForm({
           className={`mt-1 ${inputClass}`}
         />
       </label>
+      <input
+        name="program"
+        placeholder="Program (blank = inherit)"
+        className={inputClass}
+      />
+      <input
+        name="envelope"
+        placeholder="Envelope (blank = inherit)"
+        className={inputClass}
+      />
       <label className="block text-sm">
         Risk class
         <select name="riskClass" className={`mt-1 ${inputClass}`} defaultValue="R2">
@@ -523,6 +532,21 @@ export function CutConfigForm({
             </option>
           ))}
         </select>
+      </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="applyLatestRevs"
+          defaultChecked
+          className="mt-0.5"
+        />
+        <span>
+          Apply newer part revisions
+          <span className="block text-xs text-[var(--muted)]">
+            Pins that have a later catalog rev are swapped. Uncheck to copy
+            pins exactly.
+          </span>
+        </span>
       </label>
       <ActionError state={state} />
       <button

@@ -81,7 +81,7 @@ export function releaseConfiguration(
 
   return finalizeRelease(db, config, {
     by: input.by,
-    supersedeBase: input.supersedeBase ?? true,
+    supersedeBase: input.supersedeBase ?? false,
   });
 }
 
@@ -138,7 +138,7 @@ export function approveRelease(
   return finalizeRelease(db, config, {
     by: config.releaseRequestedBy,
     reviewer: input.reviewer,
-    supersedeBase: input.supersedeBase ?? true,
+    supersedeBase: input.supersedeBase ?? false,
   });
 }
 

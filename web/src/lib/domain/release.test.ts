@@ -56,20 +56,21 @@ describe("releaseConfiguration (direct, R0–R2)", () => {
     expect(getConfig(configId).status).toBe("draft");
   });
 
-  it("supersedes the base by default, keeps it on partial cut-in", () => {
+  it("keeps the base live by default, supersedes only when asked", () => {
     const base = makeConfig(db, "CFG-N", { status: "released" });
     const next = makeConfig(db, "CFG-N1", { basedOnConfigId: base });
     releaseConfiguration(db, { configId: next, by: "m.chen" });
-    expect(getConfig(base).status).toBe("superseded");
+    expect(getConfig(base).status).toBe("released");
+    expect(getConfig(next).status).toBe("released");
 
     const base2 = makeConfig(db, "CFG-M", { status: "released" });
     const next2 = makeConfig(db, "CFG-M1", { basedOnConfigId: base2 });
     releaseConfiguration(db, {
       configId: next2,
       by: "m.chen",
-      supersedeBase: false,
+      supersedeBase: true,
     });
-    expect(getConfig(base2).status).toBe("released");
+    expect(getConfig(base2).status).toBe("superseded");
     expect(getConfig(next2).status).toBe("released");
   });
 });
@@ -137,7 +138,11 @@ describe("R3 request/approve flow", () => {
       basedOnConfigId: base,
     });
     requestRelease(db, { configId: next, by: "m.chen" });
-    approveRelease(db, { configId: next, reviewer: "lead.k" });
+    approveRelease(db, {
+      configId: next,
+      reviewer: "lead.k",
+      supersedeBase: true,
+    });
     expect(getConfig(base).status).toBe("superseded");
   });
 
