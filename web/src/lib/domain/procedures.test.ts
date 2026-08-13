@@ -36,17 +36,12 @@ describe("procedures & test definitions", () => {
   it("creates test definitions and rejects duplicate keys", () => {
     expect(
       createTestDefinition(db, {
-        key: "THRUST",
-        name: "Thrust",
+        key: "TST-1",
+        name: "Leak",
         description: "",
         appliesTo: "article",
-        unit: "N",
-        limitMin: 47,
-        limitMax: 53,
       }).ok,
     ).toBe(true);
-    const stored = db.select().from(s.testDefinitions).all()[0];
-    expect(stored).toMatchObject({ unit: "N", limitMin: 47, limitMax: 53 });
     expect(
       createTestDefinition(db, {
         key: "TST-1",

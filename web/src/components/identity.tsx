@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { IDENTITY_COOKIE, IDENTITY_STORAGE_KEY } from "../lib/identity";
 import { compactInputClass, inputClass } from "./ui";
+
+const IDENTITY_EVENT = "cadence-identity";
 
 function readStoredIdentity(): string {
   try {
@@ -11,6 +13,7 @@ function readStoredIdentity(): string {
   } catch {
     /* private mode */
   }
+  if (typeof document === "undefined") return "";
   const cookie = document.cookie
     .split("; ")
     .find((c) => c.startsWith(`${IDENTITY_COOKIE}=`));
@@ -26,6 +29,20 @@ function persistIdentity(value: string) {
     /* private mode */
   }
   document.cookie = `${IDENTITY_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+  window.dispatchEvent(new Event(IDENTITY_EVENT));
+}
+
+function subscribe(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(IDENTITY_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(IDENTITY_EVENT, onStoreChange);
+  };
+}
+
+function getServerSnapshot() {
+  return "";
 }
 
 export function IdentityField({
@@ -43,13 +60,13 @@ export function IdentityField({
   required?: boolean;
   placeholder?: string;
 }) {
-  const [value, setValue] = useState("");
-  useEffect(() => {
-    const stored = readStoredIdentity();
-    if (stored) {
-      setValue(stored);
-      persistIdentity(stored);
-    }
+  const value = useSyncExternalStore(
+    subscribe,
+    readStoredIdentity,
+    getServerSnapshot,
+  );
+  const onChange = useCallback((next: string) => {
+    persistIdentity(next);
   }, []);
 
   const cls =
@@ -60,10 +77,7 @@ export function IdentityField({
       type={hidden ? "hidden" : "text"}
       name={name}
       value={value}
-      onChange={(e) => {
-        setValue(e.target.value);
-        persistIdentity(e.target.value);
-      }}
+      onChange={(e) => onChange(e.target.value)}
       placeholder={hidden ? undefined : placeholder}
       required={hidden ? false : required}
       className={hidden ? undefined : cls}

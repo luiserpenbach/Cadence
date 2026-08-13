@@ -144,7 +144,6 @@ describe("cutConfiguration", () => {
       .where(eq(s.configBomLines.configId, result.configId))
       .all();
     expect(bom[0].partRevisionId).toBe(revB);
-    expect(result.configId);
     const cfg = db
       .select()
       .from(s.configurations)
@@ -171,7 +170,6 @@ describe("cutConfiguration", () => {
       .get()!;
     expect(cfg.notes).toContain("already at latest");
   });
-});
 
   it("rejects a duplicate key without leaving orphan rows (B5)", () => {
     const result = cutConfiguration(db, {

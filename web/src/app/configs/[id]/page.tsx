@@ -362,17 +362,19 @@ export default async function ConfigDetailPage({
             ))}
           </ul>
           {isDraft ? (
-            <AddLinkForm
-              configId={config.id}
-              op="add_test"
-              fieldName="testDefinitionId"
-              label="Require"
-              options={allTestDefs.map((t) => ({
-                id: t.id,
-                label: `${t.key} — ${t.name}`,
-              }))}
-            />
-            <CreateAndPinTestForm configId={config.id} />
+            <>
+              <AddLinkForm
+                configId={config.id}
+                op="add_test"
+                fieldName="testDefinitionId"
+                label="Require"
+                options={allTestDefs.map((t) => ({
+                  id: t.id,
+                  label: `${t.key} — ${t.name}`,
+                }))}
+              />
+              <CreateAndPinTestForm configId={config.id} />
+            </>
           ) : null}
         </Panel>
         <Panel>
@@ -403,17 +405,19 @@ export default async function ConfigDetailPage({
             ))}
           </div>
           {isDraft ? (
-            <AddLinkForm
-              configId={config.id}
-              op="add_proc"
-              fieldName="procedureId"
-              label="Link"
-              options={allProcedures.map((p) => ({
-                id: p.id,
-                label: `${p.key} — ${p.title}`,
-              }))}
-            />
-            <CreateAndPinProcedureForm configId={config.id} />
+            <>
+              <AddLinkForm
+                configId={config.id}
+                op="add_proc"
+                fieldName="procedureId"
+                label="Link"
+                options={allProcedures.map((p) => ({
+                  id: p.id,
+                  label: `${p.key} — ${p.title}`,
+                }))}
+              />
+              <CreateAndPinProcedureForm configId={config.id} />
+            </>
           ) : null}
         </Panel>
       </div>
