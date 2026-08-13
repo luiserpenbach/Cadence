@@ -464,6 +464,9 @@ export function seedIfEmpty() {
     ["TUBE-SS316-050@A", 20, "LOT-TUBE"],
     ["MLI-BLANKET@A", 6, "LOT-MLI"],
     ["BRK-MANIFOLD@A", 4, "LOT-BRK"],
+    ["MNF-STAND-B@A", 1, "LOT-MNF"],
+    ["DAQ-CH16@A", 1, "LOT-DAQ"],
+    ["SNS-STAND-PT@A", 4, "LOT-SPT"],
   ];
   for (const [revKey, qty, lot] of inv) {
     db.insert(s.inventoryLots)

@@ -1,11 +1,12 @@
-import Link from "next/link";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
 import { getFloorView } from "../../lib/domain/floor";
 import { diffBom } from "../../lib/impact";
 import { getConfigBundle } from "../../lib/queries";
+import { stockByRevision } from "../../lib/domain/inventory";
+import { CreateKitForm } from "../../components/inventory-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -32,11 +33,11 @@ export default async function FloorPage({
     <Panel>
       <form method="get" className="flex flex-wrap items-end gap-2">
         <label className="block text-sm">
-          Article on the bench
+          Article
           <select
             name="article"
             defaultValue={articleId}
-            className="mt-1 block rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            className={`mt-1 block ${inputClass}`}
           >
             {articles.map((a) => (
               <option key={a.id} value={a.id}>
@@ -50,7 +51,7 @@ export default async function FloorPage({
           <select
             name="stand"
             defaultValue={standId}
-            className="mt-1 block rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            className={`mt-1 block ${inputClass}`}
           >
             {stands.map((st) => (
               <option key={st.id} value={st.id}>
@@ -61,9 +62,9 @@ export default async function FloorPage({
         </label>
         <button
           type="submit"
-          className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
+          className={buttonClass}
         >
-          Show recipe
+          Show
         </button>
       </form>
     </Panel>
@@ -71,10 +72,7 @@ export default async function FloorPage({
 
   if (!view) {
     return (
-      <AppShell
-        title="Floor"
-        subtitle="Pick the article on your bench — Cadence shows the current recipe."
-      >
+      <AppShell title="Floor">
         {articles.length === 0 ? (
           <Panel>No articles yet.</Panel>
         ) : (
@@ -97,6 +95,7 @@ export default async function FloorPage({
   const standBundle = resolvedStandConfig
     ? getConfigBundle(resolvedStandConfig.id)
     : null;
+  const stock = stockByRevision(db);
 
   const changeDelta =
     view.changedSinceLastRun && resolvedArticleConfig && view.lastRun
@@ -109,17 +108,16 @@ export default async function FloorPage({
   ): React.ReactNode => {
     if (r.outcome === "none") {
       return (
-        <p className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-950">
-          No released {kind} config covers this bench. Do not build or test —
-          ask the responsible engineer to release one.
+        <p className="alert alert-warn">
+          No released {kind} config covers this.
         </p>
       );
     }
     if (r.outcome === "conflict") {
       return (
-        <p className="rounded-md bg-rose-100 px-3 py-2 text-sm text-rose-950">
-          Config conflict: {r.candidates.map((c) => c.key).join(" vs ")}. A
-          designer must fix effectivity before this bench can run.
+        <p className="alert alert-danger">
+          Config conflict: {r.candidates.map((c) => c.key).join(" vs ")}.
+          Fix effectivity before running.
         </p>
       );
     }
@@ -127,14 +125,11 @@ export default async function FloorPage({
   };
 
   return (
-    <AppShell
-      title={`${view.article.serial} @ ${view.stand.key}`}
-      subtitle="Current recipe for this bench — resolved live from released configs."
-    >
+    <AppShell title={`${view.article.serial} @ ${view.stand.key}`}>
       <div className="mb-5">{picker}</div>
 
       {view.changedSinceLastRun && view.lastRunArticleConfig && resolvedArticleConfig ? (
-        <div className="mb-5 rounded-lg border border-amber-300 bg-amber-100 px-4 py-3 text-amber-950">
+        <div className="alert alert-warn mb-5">
           <div className="font-medium">
             ⚠ Configuration changed since the last run on {view.article.serial}
           </div>
@@ -146,7 +141,7 @@ export default async function FloorPage({
           </div>
         </div>
       ) : view.lastRun ? (
-        <div className="mb-5 rounded-lg border border-emerald-300 bg-emerald-100 px-4 py-3 text-sm text-emerald-950">
+        <div className="alert alert-ok mb-5">
           No configuration change since the last run on {view.article.serial}.
         </div>
       ) : null}
@@ -164,7 +159,7 @@ export default async function FloorPage({
 
       {changeDelta && changeDelta.length > 0 ? (
         <Panel className="mb-5">
-          <h2 className="font-display text-xl">What changed</h2>
+          <h2 className="font-display">What changed</h2>
           <div className="mt-3">
             <DataTable
               headers={["Change", "Part", "Detail"]}
@@ -186,7 +181,9 @@ export default async function FloorPage({
                 </span>,
                 d.type === "changed" ? (
                   <span key="d">
-                    rev {d.fromRevision}→{d.toRevision}
+                    {d.fromPartNumber !== d.toPartNumber
+                      ? `${d.fromPartNumber}@${d.fromRevision} → ${d.toPartNumber}@${d.toRevision}`
+                      : `rev ${d.fromRevision}→${d.toRevision}`}
                     {d.fromQty !== d.toQty ? ` · qty ${d.fromQty}→${d.toQty}` : ""}
                   </span>
                 ) : (
@@ -201,27 +198,38 @@ export default async function FloorPage({
       ) : null}
 
       {articleBundle && resolvedArticleConfig ? (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Panel>
-            <h2 className="font-display text-xl">
+            <h2 className="font-display">
               Build to: {resolvedArticleConfig.key}
             </h2>
             <div className="mt-3">
               <DataTable
-                headers={["Find", "Part", "Rev", "Qty", "Name"]}
+                headers={["Find", "Part", "Rev", "Qty", "Avail", "Name"]}
                 rows={[...articleBundle.bom]
                   .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
-                  .map((l) => [
-                    <span key="f" className="font-mono text-xs">
-                      {l.findNumber}
-                    </span>,
-                    <span key="p" className="font-mono text-xs">
-                      {l.partNumber}
-                    </span>,
-                    l.revision,
-                    String(l.qty),
-                    l.name,
-                  ])}
+                  .map((l) => {
+                    const avail = stock.get(l.partRevisionId)?.available ?? 0;
+                    const short = avail < l.qty;
+                    return [
+                      <span key="f" className="font-mono text-xs">
+                        {l.findNumber}
+                      </span>,
+                      <span key="p" className="font-mono text-xs">
+                        {l.partNumber}
+                      </span>,
+                      l.revision,
+                      String(l.qty),
+                      <span
+                        key="a"
+                        className={short ? "font-medium text-[var(--danger)]" : undefined}
+                      >
+                        {avail}
+                        {short ? " short" : ""}
+                      </span>,
+                      l.name,
+                    ];
+                  })}
               />
             </div>
           </Panel>
@@ -230,7 +238,7 @@ export default async function FloorPage({
               (bundle) =>
                 bundle.procedures.map((p) => (
                   <Panel key={p.id}>
-                    <div className="font-mono text-xs text-[var(--accent)]">
+                    <div className="font-mono text-xs text-[var(--muted)]">
                       {p.key} · v{p.version}
                     </div>
                     <div className="font-medium">{p.title}</div>
@@ -241,17 +249,52 @@ export default async function FloorPage({
                 )),
             )}
             <Panel>
-              <h2 className="font-display text-xl">Next step</h2>
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                Ready to run? Bind it on the{" "}
-                <Link className="underline" href="/runs">
-                  Runs
-                </Link>{" "}
-                page — the same resolution shown here is applied automatically.
-              </p>
+              <h2 className="font-display">Kit</h2>
+              <CreateKitForm
+                articleId={view.article.id}
+                configId={resolvedArticleConfig.id}
+              />
             </Panel>
           </div>
         </div>
+      ) : null}
+
+      {standBundle && resolvedStandConfig ? (
+        <Panel className="mt-5">
+          <h2 className="font-display">
+            Stand: {resolvedStandConfig.key}
+          </h2>
+          <div className="mt-3">
+            <DataTable
+              compact
+              headers={["Find", "Part", "Rev", "Qty", "Avail", "Name"]}
+              rows={[...standBundle.bom]
+                .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
+                .map((l) => {
+                  const avail = stock.get(l.partRevisionId)?.available ?? 0;
+                  const short = avail < l.qty;
+                  return [
+                    <span key="f" className="font-mono text-xs">
+                      {l.findNumber}
+                    </span>,
+                    <span key="p" className="font-mono text-xs">
+                      {l.partNumber}
+                    </span>,
+                    l.revision,
+                    String(l.qty),
+                    <span
+                      key="a"
+                      className={short ? "font-medium text-[var(--danger)]" : undefined}
+                    >
+                      {avail}
+                      {short ? " short" : ""}
+                    </span>,
+                    l.name,
+                  ];
+                })}
+            />
+          </div>
+        </Panel>
       ) : null}
     </AppShell>
   );

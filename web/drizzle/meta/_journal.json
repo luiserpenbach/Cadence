@@ -57,6 +57,13 @@
       "when": 1785579250422,
       "tag": "0007_part_meta_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1786572312228,
+      "tag": "0008_inventory_kits_bom",
+      "breakpoints": true
     }
   ]
 }

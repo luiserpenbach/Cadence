@@ -3,6 +3,11 @@ import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
+import {
+  AddPoLineForm,
+  CreatePoForm,
+  PoStatusButtons,
+} from "../../components/inventory-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -28,38 +33,80 @@ export default function ProcurementPage() {
     .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
     .all();
 
+  const partRevs = db
+    .select({
+      id: s.partRevisions.id,
+      partNumber: s.parts.partNumber,
+      revision: s.partRevisions.revision,
+    })
+    .from(s.partRevisions)
+    .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
+    .all()
+    .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+  const partRevOptions = partRevs.map((p) => ({
+    id: p.id,
+    label: `${p.partNumber} @ ${p.revision}`,
+  }));
+
   return (
-    <AppShell
-      title="Procurement"
-      subtitle="Thin purchasing — demand signal and simple POs so inventory isn’t fake."
-    >
-      {orders.map((po) => (
-        <Panel key={po.id} className="mb-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-display text-xl">{po.poNumber}</h2>
-            <Badge tone="accent">{po.status}</Badge>
-          </div>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            {po.supplier} — {po.notes}
-          </p>
-          <div className="mt-3">
-            <DataTable
-              headers={["Part", "Rev", "Qty", "Unit cost", "Name"]}
-              rows={lines
-                .filter((l) => l.poId === po.id)
-                .map((l) => [
-                  <span key="p" className="font-mono text-xs">
-                    {l.partNumber}
-                  </span>,
-                  l.revision,
-                  String(l.qty),
-                  `$${l.unitCost}`,
-                  l.name,
-                ])}
-            />
-          </div>
+    <AppShell title="Procurement">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-5">
+          {orders.length === 0 ? (
+            <Panel>No purchase orders yet — create one to the right.</Panel>
+          ) : (
+            orders.map((po) => (
+              <Panel key={po.id}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-display">{po.poNumber}</h2>
+                  <Badge
+                    tone={
+                      po.status === "received"
+                        ? "ok"
+                        : po.status === "ordered"
+                          ? "accent"
+                          : "warn"
+                    }
+                  >
+                    {po.status}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  {po.supplier}
+                  {po.notes ? ` — ${po.notes}` : ""}
+                  {po.receivedBy ? ` · received by ${po.receivedBy}` : ""}
+                </p>
+                <div className="mt-3">
+                  <DataTable
+                    compact
+                    empty="No lines yet."
+                    headers={["Part", "Rev", "Qty", "Unit cost", "Name"]}
+                    rows={lines
+                      .filter((l) => l.poId === po.id)
+                      .map((l) => [
+                        <span key="p" className="font-mono text-xs">
+                          {l.partNumber}
+                        </span>,
+                        l.revision,
+                        String(l.qty),
+                        `$${l.unitCost}`,
+                        l.name,
+                      ])}
+                  />
+                </div>
+                {po.status !== "received" ? (
+                  <AddPoLineForm poId={po.id} partRevs={partRevOptions} />
+                ) : null}
+                <PoStatusButtons poId={po.id} status={po.status} />
+              </Panel>
+            ))
+          )}
+        </div>
+        <Panel>
+          <h2 className="font-display">New PO</h2>
+          <CreatePoForm />
         </Panel>
-      ))}
+      </div>
     </AppShell>
   );
 }

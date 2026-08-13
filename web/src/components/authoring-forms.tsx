@@ -18,20 +18,15 @@ import {
   uploadFileAttachmentAction,
   type ActionState,
 } from "../lib/actions";
+import { PartRevPicker, useRefreshOnOk } from "./pickers";
+import { buttonClass, compactInputClass, inputClass, subtleButtonClass } from "./ui";
 
 const initialState: ActionState = { ok: false, error: "" };
-
-const inputClass =
-  "w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm";
-const buttonClass =
-  "rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60";
-const subtleButtonClass =
-  "rounded-md border border-[var(--line)] px-3 py-1.5 text-sm disabled:opacity-60";
 
 function ActionError({ state }: { state: ActionState }) {
   if (!state.error) return null;
   return (
-    <p className="rounded-md bg-rose-100 px-3 py-2 text-sm text-rose-950">
+    <p className="msg-error">
       {state.error}
     </p>
   );
@@ -40,7 +35,7 @@ function ActionError({ state }: { state: ActionState }) {
 function ActionMessage({ state }: { state: ActionState }) {
   if (!state.ok || !state.message) return null;
   return (
-    <p className="rounded-md bg-emerald-100 px-3 py-2 text-sm text-emerald-950">
+    <p className="msg-ok">
       {state.message}
     </p>
   );
@@ -56,7 +51,7 @@ export function NewPartForm() {
       <input
         name="partNumber"
         required
-        placeholder="Part number (VLV-CRYO-075)"
+        placeholder="Part number"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -87,6 +82,11 @@ export function NewPartForm() {
           <option value="assembly">assembly</option>
         </select>
       </div>
+      <textarea
+        name="description"
+        placeholder="Description (optional)"
+        className={`min-h-16 ${inputClass}`}
+      />
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Create part
@@ -152,7 +152,7 @@ export function AttachmentForms({
           type="file"
           name="file"
           required
-          className="block w-full text-sm file:mr-2 file:rounded-md file:border file:border-[var(--line)] file:bg-white file:px-3 file:py-1.5 file:text-sm"
+          className="block w-full text-sm file:mr-2 file:rounded-none file:border file:border-[var(--line)] file:bg-[var(--control)] file:px-3 file:py-1.5 file:text-sm"
         />
         <div className="flex gap-2">
           <input
@@ -198,12 +198,12 @@ export function RemoveAttachmentButton({
       <input type="hidden" name="entityType" value={entityType} />
       <input type="hidden" name="entityId" value={entityId} />
       {state.error ? (
-        <span className="mr-1 text-xs text-rose-700">{state.error}</span>
+        <span className="mr-1 text-xs text-[var(--danger)]">{state.error}</span>
       ) : null}
       <button
         type="submit"
         disabled={pending}
-        className="text-xs text-rose-700 underline-offset-2 hover:underline disabled:opacity-60"
+        className="text-xs text-[var(--danger)] underline-offset-2 hover:underline disabled:opacity-60"
       >
         remove
       </button>
@@ -260,7 +260,7 @@ export function NewArticleForm() {
       <input
         name="serial"
         required
-        placeholder="Serial (TP-019)"
+        placeholder="Serial"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -282,7 +282,7 @@ export function NewStandForm() {
       <input
         name="key"
         required
-        placeholder="Key (COLD-FLOW-2)"
+        placeholder="Key"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -305,7 +305,7 @@ export function NewConfigForm() {
       <input
         name="key"
         required
-        placeholder="Key (LN2-COOL-1)"
+        placeholder="Key"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -343,16 +343,11 @@ export function AsBuiltForm({
     recordAsBuiltAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="articleId" value={articleId} />
-      <select name="partRevisionId" className={inputClass}>
-        {partRevs.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.label}
-          </option>
-        ))}
-      </select>
+      <PartRevPicker name="partRevisionId" options={partRevs} />
       <div className="flex gap-2">
         <input
           name="qty"
@@ -376,6 +371,7 @@ export function AsBuiltForm({
           </option>
         ))}
       </select>
+      <input name="by" defaultValue="m.chen" className={inputClass} />
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Record as-built line
@@ -394,7 +390,7 @@ export function NewProcedureForm() {
       <input
         name="key"
         required
-        placeholder="Key (PROC-PURGE-1)"
+        placeholder="Key"
         className={`font-mono ${inputClass}`}
       />
       <input name="title" required placeholder="Title" className={inputClass} />
@@ -456,7 +452,7 @@ export function NewTestDefForm() {
       <input
         name="key"
         required
-        placeholder="Key (TST-LEAK-N2)"
+        placeholder="Key"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -522,6 +518,7 @@ export function BomLineEditor({
   currentRevId,
   qty,
   findNumber,
+  notes,
 }: {
   configId: string;
   bomLineId: string;
@@ -529,11 +526,13 @@ export function BomLineEditor({
   currentRevId: string;
   qty: number;
   findNumber: string;
+  notes: string;
 }) {
   const [state, formAction, pending] = useActionState(
     configEditAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="flex flex-wrap items-center gap-1.5">
       <input type="hidden" name="op" value="update_bom" />
@@ -542,7 +541,7 @@ export function BomLineEditor({
       <select
         name="partRevisionId"
         defaultValue={currentRevId}
-        className="rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+        className={`max-w-56 ${compactInputClass}`}
       >
         {revOptions.map((r) => (
           <option key={r.id} value={r.id}>
@@ -556,23 +555,30 @@ export function BomLineEditor({
         step="any"
         min="0"
         defaultValue={qty}
-        className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+        className={`w-16 ${compactInputClass}`}
       />
       <input
         name="findNumber"
+        required
         defaultValue={findNumber}
         placeholder="find"
-        className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+        className={`w-16 ${compactInputClass}`}
+      />
+      <input
+        name="notes"
+        defaultValue={notes}
+        placeholder="notes"
+        className={`w-28 ${compactInputClass}`}
       />
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md border border-[var(--line)] px-2 py-1 text-xs disabled:opacity-60"
+        className={`${subtleButtonClass} px-2 py-1 text-xs`}
       >
         Save
       </button>
       {state.error ? (
-        <span className="text-xs text-rose-700">{state.error}</span>
+        <span className="text-xs text-[var(--danger)]">{state.error}</span>
       ) : null}
     </form>
   );
@@ -596,15 +602,58 @@ export function ConfigEditButton({
         <input key={k} type="hidden" name={k} value={v} />
       ))}
       {state.error ? (
-        <span className="mr-2 text-xs text-rose-700">{state.error}</span>
+        <span className="mr-2 text-xs text-[var(--danger)]">{state.error}</span>
       ) : null}
       <button
         type="submit"
         disabled={pending}
-        className="text-xs text-rose-700 underline-offset-2 hover:underline disabled:opacity-60"
+        className="text-xs text-[var(--danger)] underline-offset-2 hover:underline disabled:opacity-60"
       >
         {label}
       </button>
+    </form>
+  );
+}
+
+export function AddAlternateForm({
+  configId,
+  lines,
+  partRevs,
+}: {
+  configId: string;
+  lines: Array<{ id: string; label: string }>;
+  partRevs: Array<{ id: string; label: string }>;
+}) {
+  const [state, formAction, pending] = useActionState(
+    configEditAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  if (lines.length === 0) return null;
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input type="hidden" name="op" value="add_alt" />
+      <input type="hidden" name="configId" value={configId} />
+      <div className="flex flex-wrap gap-2">
+        <select name="bomLineId" className={inputClass}>
+          {lines.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+        <select name="partRevisionId" className={inputClass}>
+          {partRevs.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <button type="submit" disabled={pending} className={subtleButtonClass}>
+          Allow alternate
+        </button>
+      </div>
+      <ActionError state={state} />
     </form>
   );
 }
@@ -620,17 +669,12 @@ export function AddBomLineForm({
     configEditAction,
     initialState,
   );
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="op" value="add_bom" />
       <input type="hidden" name="configId" value={configId} />
-      <select name="partRevisionId" className={inputClass}>
-        {partRevs.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.label}
-          </option>
-        ))}
-      </select>
+      <PartRevPicker name="partRevisionId" options={partRevs} />
       <div className="flex gap-2">
         <input
           name="qty"
@@ -642,11 +686,13 @@ export function AddBomLineForm({
         />
         <input
           name="findNumber"
+          required
           placeholder="Find no."
           className={`w-28 ${inputClass}`}
         />
+        <input name="notes" placeholder="Notes" className={inputClass} />
         <button type="submit" disabled={pending} className={subtleButtonClass}>
-          Add pin
+          Add line
         </button>
       </div>
       <ActionError state={state} />
@@ -736,7 +782,7 @@ export function AddEffectivityForm({
         <div className="flex gap-2">
           <input
             name="serialFrom"
-            placeholder="From (TP-014)"
+            placeholder="From"
             className={`font-mono ${inputClass}`}
           />
           <input

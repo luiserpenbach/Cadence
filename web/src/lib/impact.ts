@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import * as s from "../db/schema";
 import { compareSerials } from "./serial";
+import { configCoversArticle } from "./domain/effectivity";
+import { inboundByRevision, stockByRevision } from "./domain/inventory";
 
 export type BomPin = {
   partRevisionId: string;
@@ -10,6 +12,7 @@ export type BomPin = {
   name: string;
   qty: number;
   findNumber: string;
+  notes: string;
 };
 
 export type BomDelta =
@@ -26,6 +29,8 @@ export type BomDelta =
       findNumber: string;
       partNumber: string;
       name: string;
+      fromPartNumber: string;
+      toPartNumber: string;
       fromRevision: string;
       toRevision: string;
       fromQty: number;
@@ -39,6 +44,7 @@ export function getConfigBom(configId: string): BomPin[] {
       partRevisionId: s.configBomLines.partRevisionId,
       qty: s.configBomLines.qty,
       findNumber: s.configBomLines.findNumber,
+      notes: s.configBomLines.notes,
       revision: s.partRevisions.revision,
       partNumber: s.parts.partNumber,
       name: s.parts.name,
@@ -59,6 +65,7 @@ export function getConfigBom(configId: string): BomPin[] {
     name: r.name,
     qty: r.qty,
     findNumber: r.findNumber,
+    notes: r.notes,
   }));
 }
 
@@ -90,6 +97,8 @@ export function diffBom(fromId: string, toId: string): BomDelta[] {
         findNumber: line.findNumber,
         partNumber: line.partNumber,
         name: line.name,
+        fromPartNumber: prev.partNumber,
+        toPartNumber: line.partNumber,
         fromRevision: prev.revision,
         toRevision: line.revision,
         fromQty: prev.qty,
@@ -158,17 +167,53 @@ export function getDefaultDelta(): {
   return { from, to };
 }
 
+export type ShortageRow = {
+  partRevisionId: string;
+  partNumber: string;
+  revision: string;
+  needed: number;
+  onHand: number;
+  available: number;
+  inbound: number;
+  short: number;
+};
+
+export function shortagesForConfig(
+  configId: string,
+  kitCount: number,
+): ShortageRow[] {
+  const db = getDb();
+  const bom = getConfigBom(configId);
+  const stock = stockByRevision(db);
+  const inbound = inboundByRevision(db);
+  const rows: ShortageRow[] = [];
+  for (const line of bom) {
+    const summary = stock.get(line.partRevisionId);
+    const onHand = summary?.onHand ?? 0;
+    const available = summary?.available ?? 0;
+    const inboundQty = inbound.get(line.partRevisionId) ?? 0;
+    const needed = line.qty * kitCount;
+    rows.push({
+      partRevisionId: line.partRevisionId,
+      partNumber: line.partNumber,
+      revision: line.revision,
+      needed,
+      onHand,
+      available,
+      inbound: inboundQty,
+      short: Math.max(0, needed - available - inboundQty),
+    });
+  }
+  return rows;
+}
+
 export type ImpactReport = {
   from: typeof s.configurations.$inferSelect;
   to: typeof s.configurations.$inferSelect;
   bomDeltas: BomDelta[];
   testDiff: ReturnType<typeof diffRequiredTests>;
-  inventoryShortages: Array<{
-    partNumber: string;
-    revision: string;
-    needed: number;
-    onHand: number;
-  }>;
+  inventoryShortages: ShortageRow[];
+  kitCount: number;
   articlesOnPrior: Array<{ serial: string; name: string }>;
   staleTestHint: string;
 };
@@ -193,45 +238,23 @@ export function buildImpactReport(
   const bomDeltas = diffBom(fromConfigId, toConfigId);
   const testDiff = diffRequiredTests(fromConfigId, toConfigId);
 
-  const toBom = getConfigBom(toConfigId);
-  const inventoryShortages = [];
-  for (const line of toBom) {
-    const lots = db
-      .select()
-      .from(s.inventoryLots)
-      .where(eq(s.inventoryLots.partRevisionId, line.partRevisionId))
-      .all();
-    const onHand = lots.reduce((sum, l) => sum + l.qtyOnHand, 0);
-    if (onHand < line.qty) {
-      inventoryShortages.push({
-        partNumber: line.partNumber,
-        revision: line.revision,
-        needed: line.qty,
-        onHand,
-      });
-    }
-  }
+  const articles = db.select().from(s.articles).all();
+  const kitCount = Math.max(
+    articles.filter((a) => configCoversArticle(db, toConfigId, a)).length,
+    1,
+  );
+  const inventoryShortages = shortagesForConfig(toConfigId, kitCount).filter(
+    (row) => row.short > 0,
+  );
 
-  // Articles below every serial cut-in point of `to` stay on the prior config.
-  const toEffectivity = db
-    .select()
-    .from(s.configEffectivity)
-    .where(eq(s.configEffectivity.configId, toConfigId))
-    .all();
-  const cutIns = toEffectivity
-    .map((e) => e.serialFrom)
-    .filter((sf): sf is string => Boolean(sf));
-  const articlesOnPrior =
-    cutIns.length === 0
-      ? []
-      : db
-          .select({
-            serial: s.articles.serial,
-            name: s.articles.name,
-          })
-          .from(s.articles)
-          .all()
-          .filter((a) => cutIns.every((sf) => compareSerials(a.serial, sf) < 0));
+  const articlesOnPrior = articles
+    .filter(
+      (a) =>
+        configCoversArticle(db, fromConfigId, a) &&
+        !configCoversArticle(db, toConfigId, a),
+    )
+    .map((a) => ({ serial: a.serial, name: a.name }))
+    .sort((a, b) => compareSerials(a.serial, b.serial));
 
   return {
     from,
@@ -239,6 +262,7 @@ export function buildImpactReport(
     bomDeltas,
     testDiff,
     inventoryShortages,
+    kitCount,
     articlesOnPrior,
     staleTestHint:
       "Tests shared between configs should be treated as stale for articles moving to the new config until re-run.",

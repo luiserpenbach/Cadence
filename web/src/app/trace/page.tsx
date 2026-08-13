@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import { trace } from "../../lib/domain/trace";
@@ -25,29 +25,22 @@ export default async function TracePage({
           <input
             name="q"
             defaultValue={query}
-            placeholder="TP-017, SN-V-017B, LOT-O85…"
-            className="mt-1 w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 font-mono text-sm"
+            placeholder="Serial, lot, or article"
+            className={`mt-1 font-mono ${inputClass}`}
           />
         </label>
         <button
           type="submit"
-          className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
+          className={buttonClass}
         >
           Trace
         </button>
       </form>
-      <p className="mt-2 text-xs text-[var(--muted)]">
-        Scan a QR label or type any identifier — article serial, installed
-        part serial/lot, or inventory lot code.
-      </p>
     </Panel>
   );
 
   return (
-    <AppShell
-      title="Trace"
-      subtitle="Serial ↔ config ↔ build ↔ test ↔ supplier — one identifier in, full genealogy out."
-    >
+    <AppShell title="Trace">
       <div className="mb-5">{searchBox}</div>
 
       {result === null ? null : result.kind === "none" ? (
@@ -62,9 +55,9 @@ export default async function TracePage({
         <>
           <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="font-display text-2xl">
+              <div className="font-mono text-lg tracking-tight">
                 {result.article.serial} — {result.article.name}
-              </h2>
+              </div>
               <div className="mt-2 flex gap-2">
                 <Badge tone="neutral">{result.article.status}</Badge>
                 <Link
@@ -78,9 +71,9 @@ export default async function TracePage({
             <QrLabel identifier={result.article.serial} />
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Panel>
-              <h2 className="font-display text-xl">Build history (as-built)</h2>
+              <h2 className="font-display">Build history (as-built)</h2>
               <div className="mt-3">
                 <DataTable
                   headers={["Part", "Rev", "Qty", "Serial/Lot", "Run", "When"]}
@@ -121,14 +114,14 @@ export default async function TracePage({
             </Panel>
 
             <Panel>
-              <h2 className="font-display text-xl">
+              <h2 className="font-display">
                 Test history (runs &amp; configs)
               </h2>
               <ul className="mt-3 space-y-2 text-sm">
                 {result.runs.map((r) => (
                   <li
                     key={r.id}
-                    className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
+                    className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
@@ -177,20 +170,20 @@ export default async function TracePage({
       ) : (
         <>
           <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-            <h2 className="font-display text-2xl">
-              <span className="font-mono">{result.identifier}</span>
-            </h2>
+            <div className="font-mono text-lg tracking-tight">
+              {result.identifier}
+            </div>
             <QrLabel identifier={result.identifier} />
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-3">
             <Panel>
-              <h2 className="font-display text-xl">Installed on</h2>
+              <h2 className="font-display">Installed on</h2>
               <ul className="mt-3 space-y-2 text-sm">
                 {result.installs.map((i, idx) => (
                   <li
                     key={idx}
-                    className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
+                    className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
                   >
                     <Link
                       className="font-mono text-xs underline"
@@ -221,12 +214,12 @@ export default async function TracePage({
             </Panel>
 
             <Panel>
-              <h2 className="font-display text-xl">Inventory</h2>
+              <h2 className="font-display">Inventory</h2>
               <ul className="mt-3 space-y-2 text-sm">
                 {result.lots.map((l, idx) => (
                   <li
                     key={idx}
-                    className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
+                    className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
                   >
                     <span className="font-mono text-xs">{l.partNumber}</span> @{" "}
                     {l.revision}
@@ -242,12 +235,12 @@ export default async function TracePage({
             </Panel>
 
             <Panel>
-              <h2 className="font-display text-xl">Supplier trail</h2>
+              <h2 className="font-display">Supplier trail</h2>
               <ul className="mt-3 space-y-2 text-sm">
                 {result.purchaseOrders.map((po, idx) => (
                   <li
                     key={idx}
-                    className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
+                    className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
                   >
                     <span className="font-mono text-xs">{po.poNumber}</span> ·{" "}
                     {po.supplier}

@@ -54,9 +54,10 @@ export function cutConfiguration(db: Db, input: CutConfigInput): CutConfigResult
       .where(eq(s.configBomLines.configId, input.basedOnId))
       .all();
     for (const line of bom) {
+      const newBomId = id("bom");
       tx.insert(s.configBomLines)
         .values({
-          id: id("bom"),
+          id: newBomId,
           configId: newId,
           partRevisionId: line.partRevisionId,
           qty: line.qty,
@@ -64,6 +65,20 @@ export function cutConfiguration(db: Db, input: CutConfigInput): CutConfigResult
           notes: line.notes,
         })
         .run();
+      const alts = tx
+        .select()
+        .from(s.configBomAlternates)
+        .where(eq(s.configBomAlternates.bomLineId, line.id))
+        .all();
+      for (const alt of alts) {
+        tx.insert(s.configBomAlternates)
+          .values({
+            id: id("alt"),
+            bomLineId: newBomId,
+            partRevisionId: alt.partRevisionId,
+          })
+          .run();
+      }
     }
 
     const tests = tx

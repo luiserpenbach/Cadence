@@ -121,12 +121,48 @@ describe("draft config editing", () => {
     expect(updated.findNumber).toBe("15");
 
     expect(
+      addBomLine(db, {
+        configId: draftId,
+        partRevisionId: revId,
+        qty: 1,
+        findNumber: "15",
+      }).ok,
+    ).toBe(false);
+
+    expect(
       updateBomLine(db, {
         configId: releasedId,
         bomLineId: line.id,
         partRevisionId: otherRev,
         qty: 1,
         findNumber: "",
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("requires a unique find number", () => {
+    expect(
+      addBomLine(db, {
+        configId: draftId,
+        partRevisionId: revId,
+        qty: 1,
+        findNumber: "",
+      }).ok,
+    ).toBe(false);
+    expect(
+      addBomLine(db, {
+        configId: draftId,
+        partRevisionId: revId,
+        qty: 1,
+        findNumber: "10",
+      }).ok,
+    ).toBe(true);
+    expect(
+      addBomLine(db, {
+        configId: draftId,
+        partRevisionId: revId,
+        qty: 1,
+        findNumber: "10",
       }).ok,
     ).toBe(false);
   });

@@ -12,6 +12,7 @@ import {
 } from "../test/fixtures";
 import { buildImpactReport, diffBom, getDefaultDelta } from "./impact";
 import { compareSerials } from "./serial";
+import { createLot, reserveLot } from "./domain/inventory";
 
 describe("compareSerials", () => {
   it("compares numeric runs as numbers", () => {
@@ -53,6 +54,23 @@ describe("diffBom", () => {
     expect(deltas.filter((d) => d.type === "added")).toHaveLength(1);
     expect(deltas.filter((d) => d.type === "removed")).toHaveLength(1);
   });
+
+  it("reports a part swap on the same find number", () => {
+    const orifice070 = makePart(db, "ORF-070");
+    const orifice085 = makePart(db, "ORF-085");
+    const from = makeConfig(db, "CFG-N");
+    const to = makeConfig(db, "CFG-N1");
+    addBomLine(db, from, orifice070.revId, 1, "20");
+    addBomLine(db, to, orifice085.revId, 1, "20");
+    const changed = diffBom(from, to).filter((d) => d.type === "changed");
+    expect(changed).toHaveLength(1);
+    expect(changed[0]).toMatchObject({
+      fromPartNumber: "ORF-070",
+      toPartNumber: "ORF-085",
+      fromRevision: "A",
+      toRevision: "A",
+    });
+  });
 });
 
 describe("buildImpactReport", () => {
@@ -87,14 +105,24 @@ describe("buildImpactReport", () => {
     expect(delta.to.key).toBe("CFG-M1");
   });
 
-  it("lists articles below the serial cut-in using numeric order (B6)", () => {
+  it("lists articles covered by from but not to, including explicit lists", () => {
     const from = makeConfig(db, "CFG-N");
     const to = makeConfig(db, "CFG-N1");
     db.insert(s.configEffectivity)
       .values({
         id: id("eff"),
+        configId: from,
+        articleScope: "any",
+        standScope: "any",
+      })
+      .run();
+    db.insert(s.configEffectivity)
+      .values({
+        id: id("eff2"),
         configId: to,
+        articleScope: "serial_range",
         serialFrom: "TP-14",
+        standScope: "any",
       })
       .run();
 
@@ -104,7 +132,73 @@ describe("buildImpactReport", () => {
 
     const report = buildImpactReport(from, to);
     expect(report).not.toBeNull();
-    // Lexicographic comparison would have put TP-9 "after" TP-14 and missed it.
     expect(report!.articlesOnPrior.map((a) => a.serial)).toEqual(["TP-9"]);
+    expect(report!.kitCount).toBe(2);
+  });
+
+  it("counts explicit effectivity articles as kits and lists the rest on prior", () => {
+    const from = makeConfig(db, "CFG-N");
+    const to = makeConfig(db, "CFG-N1");
+    db.insert(s.configEffectivity)
+      .values({
+        id: id("eff"),
+        configId: from,
+        articleScope: "any",
+        standScope: "any",
+      })
+      .run();
+    const toEff = id("eff2");
+    db.insert(s.configEffectivity)
+      .values({
+        id: toEff,
+        configId: to,
+        articleScope: "explicit",
+        standScope: "any",
+      })
+      .run();
+    const a17 = makeArticle(db, "TP-017");
+    makeArticle(db, "TP-014");
+    db.insert(s.configEffectivityArticles)
+      .values({ id: id("efa"), effectivityId: toEff, articleId: a17 })
+      .run();
+
+    const report = buildImpactReport(from, to)!;
+    expect(report.kitCount).toBe(1);
+    expect(report.articlesOnPrior.map((a) => a.serial)).toEqual(["TP-014"]);
+  });
+
+  it("treats reserved qty as unavailable when computing shortages", () => {
+    const revId = makePart(db, "VLV-001").revId;
+    const from = makeConfig(db, "CFG-N");
+    const to = makeConfig(db, "CFG-N1");
+    addBomLine(db, to, revId, 2, "10");
+    db.insert(s.configEffectivity)
+      .values({
+        id: id("eff"),
+        configId: to,
+        articleScope: "any",
+        standScope: "any",
+      })
+      .run();
+    makeArticle(db, "TP-1");
+    const lot = createLot(db, {
+      partRevisionId: revId,
+      qty: 2,
+      lotCode: "LOT-A",
+      location: "CAGE",
+      by: "cage",
+    });
+    if (!lot.ok) throw new Error("lot");
+    reserveLot(db, { lotId: lot.lotId, qty: 2, by: "cage", reason: "other kit" });
+
+    const report = buildImpactReport(from, to)!;
+    expect(report.kitCount).toBe(1);
+    expect(report.inventoryShortages).toHaveLength(1);
+    expect(report.inventoryShortages[0]).toMatchObject({
+      needed: 2,
+      onHand: 2,
+      available: 0,
+      short: 2,
+    });
   });
 });

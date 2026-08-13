@@ -22,7 +22,7 @@ export async function QrLabel({
   });
 
   return (
-    <div className="inline-flex flex-col items-center gap-1 rounded-md border border-[var(--line)] bg-white p-2">
+    <div className="inline-flex flex-col items-center gap-1 rounded-none border border-[var(--line)] bg-[var(--control)] p-2">
       <div
         style={{ width: size, height: size }}
         dangerouslySetInnerHTML={{ __html: svg }}
