@@ -74,6 +74,16 @@ import {
   unallocateKitLine,
 } from "./domain/kits";
 import { importBomCsv } from "./domain/bom-csv";
+import { importCatalogCsv } from "./domain/catalog-csv";
+import {
+  cancelWorkOrder,
+  completeWorkOrder,
+  createWorkOrder,
+  openWorkOrdersForShortages,
+} from "./domain/work-orders";
+import { evaluateMeasurement, parseMeasured } from "./domain/measurements";
+import { IDENTITY_COOKIE } from "./identity";
+import { cookies } from "next/headers";
 import path from "node:path";
 
 const uploadsDir = path.join(process.cwd(), "data", "uploads");
@@ -88,6 +98,19 @@ export type ActionState = {
 
 function fail(error: string): ActionState {
   return { ok: false, error };
+}
+
+async function actor(formData: FormData, field = "by"): Promise<string> {
+  const fromForm = String(formData.get(field) ?? "").trim();
+  if (fromForm) return fromForm;
+  return (await cookies()).get(IDENTITY_COOKIE)?.value?.trim() ?? "";
+}
+
+function optionalNumber(raw: unknown): number | null {
+  const t = String(raw ?? "").trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
 }
 
 const nonEmpty = z.string().trim().min(1);
@@ -105,7 +128,7 @@ export async function acknowledgeRunGaps(
   ensureAppData();
   const parsed = ackSchema.safeParse({
     runId: formData.get("runId"),
-    by: formData.get("by"),
+    by: await actor(formData),
     reason: formData.get("reason"),
   });
   if (!parsed.success) {
@@ -137,7 +160,7 @@ export async function waiveTest(
     runId: formData.get("runId"),
     testDefinitionId: formData.get("testDefinitionId"),
     reason: formData.get("reason"),
-    approvedBy: formData.get("approvedBy"),
+    approvedBy: await actor(formData, "approvedBy"),
   });
   if (!parsed.success) {
     return fail("Test, reason, and approver are required for a waiver.");
@@ -168,16 +191,39 @@ export async function recordTestResult(
     testDefinitionId: formData.get("testDefinitionId"),
     status: formData.get("status"),
     value: String(formData.get("value") ?? ""),
-    by: formData.get("by"),
+    by: await actor(formData),
   });
   if (!parsed.success) {
     return fail("Test, a valid status (pass/fail/waived), and recorder are required.");
   }
-  const { runId, testDefinitionId, status, value, by } = parsed.data;
+  const { runId, testDefinitionId, value, by } = parsed.data;
+  let status = parsed.data.status;
 
   const db = getDb();
   const run = db.select().from(s.runs).where(eq(s.runs.id, runId)).get();
   if (!run) return fail("Run not found.");
+  const def = db
+    .select()
+    .from(s.testDefinitions)
+    .where(eq(s.testDefinitions.id, testDefinitionId))
+    .get();
+  if (!def) return fail("Test definition not found.");
+
+  let notes = "";
+  const hasLimits = def.limitMin != null || def.limitMax != null;
+  if (status !== "waived" && hasLimits) {
+    const measured = parseMeasured(value);
+    if (measured == null) {
+      return fail("Enter a measured number — this test has pass/fail limits.");
+    }
+    const evaled = evaluateMeasurement(measured, {
+      unit: def.unit,
+      limitMin: def.limitMin,
+      limitMax: def.limitMax,
+    });
+    if (evaled.status) status = evaled.status;
+    notes = evaled.detail;
+  }
 
   db.insert(s.testResults)
     .values({
@@ -186,12 +232,17 @@ export async function recordTestResult(
       testDefinitionId,
       status,
       value,
+      notes,
       recordedBy: by,
     })
     .run();
 
   revalidatePath(`/runs/${runId}`);
-  return { ok: true, error: "" };
+  return {
+    ok: true,
+    error: "",
+    message: notes || `Recorded ${status}.`,
+  };
 }
 
 const newRunSchema = z.object({
@@ -259,7 +310,7 @@ export async function releaseConfig(
   ensureAppData();
   const parsed = releaseSchema.safeParse({
     configId: formData.get("configId"),
-    by: formData.get("by"),
+    by: await actor(formData),
   });
   if (!parsed.success) {
     return fail("Config and releaser are required.");
@@ -281,7 +332,7 @@ export async function requestReleaseAction(
   ensureAppData();
   const parsed = releaseSchema.safeParse({
     configId: formData.get("configId"),
-    by: formData.get("by"),
+    by: await actor(formData),
   });
   if (!parsed.success) return fail("Config and requester are required.");
 
@@ -305,7 +356,7 @@ export async function approveReleaseAction(
   ensureAppData();
   const parsed = approveSchema.safeParse({
     configId: formData.get("configId"),
-    reviewer: formData.get("reviewer"),
+    reviewer: await actor(formData, "reviewer"),
   });
   if (!parsed.success) return fail("Reviewer name is required.");
   const supersedeBase = formData.get("supersedeBase") === "on";
@@ -419,7 +470,7 @@ export async function addLinkAttachmentAction(
     .safeParse({
       entityType: formData.get("entityType"),
       entityId: formData.get("entityId"),
-      by: formData.get("by"),
+      by: await actor(formData),
       url: formData.get("url"),
       label: String(formData.get("label") ?? ""),
     });
@@ -441,7 +492,7 @@ export async function uploadFileAttachmentAction(
     .safeParse({
       entityType: formData.get("entityType"),
       entityId: formData.get("entityId"),
-      by: formData.get("by"),
+      by: await actor(formData),
       label: String(formData.get("label") ?? ""),
     });
   if (!parsed.success) return fail("A file and your name are required.");
@@ -556,6 +607,8 @@ const newConfigSchema = z.object({
   name: nonEmpty,
   kind: z.enum(s.configKinds),
   riskClass: z.enum(s.riskClasses),
+  program: z.string().trim(),
+  envelope: z.string().trim(),
 });
 
 export async function createConfigAction(
@@ -568,6 +621,8 @@ export async function createConfigAction(
     name: formData.get("name"),
     kind: formData.get("kind"),
     riskClass: formData.get("riskClass"),
+    program: String(formData.get("program") ?? ""),
+    envelope: String(formData.get("envelope") ?? ""),
   });
   if (!parsed.success) {
     return fail("Key, name, kind, and risk class are required.");
@@ -599,7 +654,7 @@ export async function recordAsBuiltAction(
     qty: formData.get("qty"),
     serialOrLot: String(formData.get("serialOrLot") ?? ""),
     runId: String(formData.get("runId") ?? "") || undefined,
-    by: String(formData.get("by") ?? "") || undefined,
+    by: (await actor(formData)) || undefined,
   });
   if (!parsed.success) {
     return fail("Part revision and a positive quantity are required.");
@@ -627,7 +682,7 @@ export async function startExecutionAction(
   const parsed = startExecutionSchema.safeParse({
     runId: formData.get("runId"),
     procedureId: formData.get("procedureId"),
-    by: formData.get("by"),
+    by: await actor(formData),
   });
   if (!parsed.success) return fail("Procedure and operator are required.");
 
@@ -660,7 +715,7 @@ export async function recordStepAction(
     outcome: formData.get("outcome"),
     value: String(formData.get("value") ?? ""),
     note: String(formData.get("note") ?? ""),
-    by: formData.get("by"),
+    by: await actor(formData),
   });
   if (!parsed.success) return fail("Step, outcome, and operator are required.");
 
@@ -687,7 +742,7 @@ export async function abortExecutionAction(
   const parsed = abortExecutionSchema.safeParse({
     executionId: formData.get("executionId"),
     runId: formData.get("runId"),
-    by: formData.get("by"),
+    by: await actor(formData),
     reason: formData.get("reason"),
   });
   if (!parsed.success) return fail("An abort reason and operator are required.");
@@ -753,6 +808,9 @@ const newTestDefSchema = z.object({
   name: nonEmpty,
   description: z.string().trim(),
   appliesTo: z.enum(["article", "stand", "either"]),
+  unit: z.string().trim(),
+  limitMin: z.number().nullable(),
+  limitMax: z.number().nullable(),
 });
 
 export async function createTestDefinitionAction(
@@ -765,6 +823,9 @@ export async function createTestDefinitionAction(
     name: formData.get("name"),
     description: String(formData.get("description") ?? ""),
     appliesTo: formData.get("appliesTo"),
+    unit: String(formData.get("unit") ?? ""),
+    limitMin: optionalNumber(formData.get("limitMin")),
+    limitMax: optionalNumber(formData.get("limitMax")),
   });
   if (!parsed.success) return fail("Key, name, and applies-to are required.");
 
@@ -915,6 +976,9 @@ const cutSchema = z.object({
   key: nonEmpty,
   name: nonEmpty,
   riskClass: z.enum(s.riskClasses),
+  program: z.string().trim(),
+  envelope: z.string().trim(),
+  applyLatestRevs: z.boolean(),
 });
 
 export async function cutConfigFrom(
@@ -927,6 +991,9 @@ export async function cutConfigFrom(
     key: formData.get("key"),
     name: formData.get("name"),
     riskClass: formData.get("riskClass"),
+    program: String(formData.get("program") ?? ""),
+    envelope: String(formData.get("envelope") ?? ""),
+    applyLatestRevs: formData.get("applyLatestRevs") === "on",
   });
   if (!parsed.success) {
     return fail("Base config, key, name, and a valid risk class are required.");
@@ -946,7 +1013,7 @@ export async function reverseAsBuiltAction(
   ensureAppData();
   const asBuiltId = String(formData.get("asBuiltId") ?? "");
   const articleId = String(formData.get("articleId") ?? "");
-  const by = String(formData.get("by") ?? "").trim();
+  const by = await actor(formData);
   if (!asBuiltId || !by) return fail("Line and your name are required.");
   const result = reverseAsBuilt(getDb(), { asBuiltId, by });
   if (!result.ok) return fail(result.error);
@@ -1004,7 +1071,7 @@ export async function createLotAction(
       qty: formData.get("qty"),
       lotCode: formData.get("lotCode"),
       location: String(formData.get("location") ?? ""),
-      by: formData.get("by"),
+      by: await actor(formData),
       reason: String(formData.get("reason") ?? ""),
     });
   if (!parsed.success) {
@@ -1031,7 +1098,7 @@ export async function adjustLotAction(
     .safeParse({
       lotId: formData.get("lotId"),
       qtyDelta: formData.get("qtyDelta"),
-      by: formData.get("by"),
+      by: await actor(formData),
       reason: formData.get("reason"),
     });
   if (!parsed.success) {
@@ -1050,20 +1117,24 @@ export async function createPoAction(
   ensureAppData();
   const parsed = z
     .object({
-      poNumber: nonEmpty,
+      poNumber: z.string().trim(),
       supplier: nonEmpty,
       notes: z.string().trim(),
     })
     .safeParse({
-      poNumber: formData.get("poNumber"),
+      poNumber: String(formData.get("poNumber") ?? ""),
       supplier: formData.get("supplier"),
       notes: String(formData.get("notes") ?? ""),
     });
-  if (!parsed.success) return fail("PO number and supplier are required.");
-  const result = createPurchaseOrder(getDb(), parsed.data);
+  if (!parsed.success) return fail("Supplier is required.");
+  const result = createPurchaseOrder(getDb(), {
+    poNumber: parsed.data.poNumber || undefined,
+    supplier: parsed.data.supplier,
+    notes: parsed.data.notes,
+  });
   if (!result.ok) return fail(result.error);
   revalidatePath("/procurement");
-  return { ok: true, error: "", message: "PO created." };
+  return { ok: true, error: "", message: `PO ${result.poNumber} created.` };
 }
 
 export async function addPoLineAction(
@@ -1112,11 +1183,19 @@ export async function receivePoAction(
 ): Promise<ActionState> {
   ensureAppData();
   const parsed = z
-    .object({ poId: nonEmpty, by: nonEmpty, location: z.string().trim() })
+    .object({
+      poId: nonEmpty,
+      by: nonEmpty,
+      location: z.string().trim(),
+      certUrl: z.string().trim(),
+      certNotes: z.string().trim(),
+    })
     .safeParse({
       poId: formData.get("poId"),
-      by: formData.get("by"),
+      by: await actor(formData),
       location: String(formData.get("location") ?? ""),
+      certUrl: String(formData.get("certUrl") ?? ""),
+      certNotes: String(formData.get("certNotes") ?? ""),
     });
   if (!parsed.success) return fail("PO and your name are required to receive.");
   const result = receivePurchaseOrder(getDb(), parsed.data);
@@ -1136,7 +1215,7 @@ export async function openShortagePoAction(
     .safeParse({
       configId: formData.get("configId"),
       supplier: formData.get("supplier"),
-      by: formData.get("by"),
+      by: await actor(formData),
     });
   if (!parsed.success) {
     return fail("Config, supplier, and your name are required.");
@@ -1163,7 +1242,7 @@ export async function createKitAction(
     .safeParse({
       articleId: formData.get("articleId"),
       configId: formData.get("configId"),
-      by: formData.get("by"),
+      by: await actor(formData),
       notes: String(formData.get("notes") ?? ""),
     });
   if (!parsed.success) {
@@ -1191,7 +1270,7 @@ export async function allocateKitLineAction(
     .safeParse({
       kitLineId: formData.get("kitLineId"),
       lotId: formData.get("lotId"),
-      by: formData.get("by"),
+      by: await actor(formData),
       kitId: formData.get("kitId"),
     });
   if (!parsed.success) return fail("Lot and your name are required.");
@@ -1215,7 +1294,7 @@ export async function unallocateKitLineAction(
     })
     .safeParse({
       kitLineId: formData.get("kitLineId"),
-      by: formData.get("by"),
+      by: await actor(formData),
       kitId: formData.get("kitId"),
     });
   if (!parsed.success) return fail("Your name is required to unallocate.");
@@ -1235,7 +1314,7 @@ export async function allocateRemainingAction(
     .object({ kitId: nonEmpty, by: nonEmpty })
     .safeParse({
       kitId: formData.get("kitId"),
-      by: formData.get("by"),
+      by: await actor(formData),
     });
   if (!parsed.success) return fail("Your name is required to allocate.");
   const result = allocateRemaining(getDb(), parsed.data);
@@ -1260,7 +1339,7 @@ export async function issueKitAction(
     .object({ kitId: nonEmpty, by: nonEmpty, articleId: z.string().trim() })
     .safeParse({
       kitId: formData.get("kitId"),
-      by: formData.get("by"),
+      by: await actor(formData),
       articleId: String(formData.get("articleId") ?? ""),
     });
   if (!parsed.success) return fail("Your name is required to issue.");
@@ -1283,7 +1362,7 @@ export async function cancelKitAction(
     .object({ kitId: nonEmpty, by: nonEmpty })
     .safeParse({
       kitId: formData.get("kitId"),
-      by: formData.get("by"),
+      by: await actor(formData),
     });
   if (!parsed.success) return fail("Your name is required to cancel.");
   const result = cancelKit(getDb(), parsed.data);
@@ -1315,4 +1394,191 @@ export async function importBomCsvAction(
     error: "",
     message: `Imported ${result.added} new pin(s), updated ${result.updated}.`,
   };
+}
+
+export async function importCatalogCsvAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const file = formData.get("file");
+  let csv = String(formData.get("csv") ?? "");
+  if (file instanceof File && file.size > 0) {
+    csv = await file.text();
+  }
+  if (!csv.trim()) return fail("Paste CSV or choose a file.");
+  const result = importCatalogCsv(getDb(), csv);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/catalog");
+  const skipped =
+    result.skipped.length > 0
+      ? ` Skipped ${result.skipped.length}: ${result.skipped.slice(0, 3).join("; ")}`
+      : "";
+  return {
+    ok: true,
+    error: "",
+    message: `Imported ${result.added} part(s).${skipped}`,
+  };
+}
+
+export async function createWorkOrderAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      partRevisionId: nonEmpty,
+      qty: z.coerce.number().positive(),
+      by: nonEmpty,
+      location: z.string().trim(),
+      lotCode: z.string().trim(),
+      notes: z.string().trim(),
+    })
+    .safeParse({
+      partRevisionId: formData.get("partRevisionId"),
+      qty: formData.get("qty"),
+      by: await actor(formData),
+      location: String(formData.get("location") ?? ""),
+      lotCode: String(formData.get("lotCode") ?? ""),
+      notes: String(formData.get("notes") ?? ""),
+    });
+  if (!parsed.success) {
+    return fail("Make-part revision, quantity, and your name are required.");
+  }
+  const result = createWorkOrder(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/inventory");
+  return { ok: true, error: "", message: `${result.key} opened.` };
+}
+
+export async function completeWorkOrderAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({
+      workOrderId: nonEmpty,
+      by: nonEmpty,
+      lotCode: z.string().trim(),
+      location: z.string().trim(),
+    })
+    .safeParse({
+      workOrderId: formData.get("workOrderId"),
+      by: await actor(formData),
+      lotCode: String(formData.get("lotCode") ?? ""),
+      location: String(formData.get("location") ?? ""),
+    });
+  if (!parsed.success) return fail("Work order and your name are required.");
+  const result = completeWorkOrder(getDb(), {
+    workOrderId: parsed.data.workOrderId,
+    by: parsed.data.by,
+    lotCode: parsed.data.lotCode || undefined,
+    location: parsed.data.location || undefined,
+  });
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/inventory");
+  return { ok: true, error: "", message: "Work order complete — lot in stock." };
+}
+
+export async function cancelWorkOrderAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({ workOrderId: nonEmpty, by: nonEmpty })
+    .safeParse({
+      workOrderId: formData.get("workOrderId"),
+      by: await actor(formData),
+    });
+  if (!parsed.success) return fail("Work order and your name are required.");
+  const result = cancelWorkOrder(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/inventory");
+  return { ok: true, error: "", message: "Work order cancelled." };
+}
+
+export async function openShortageWoAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const parsed = z
+    .object({ configId: nonEmpty, by: nonEmpty })
+    .safeParse({
+      configId: formData.get("configId"),
+      by: await actor(formData),
+    });
+  if (!parsed.success) return fail("Config and your name are required.");
+  const result = openWorkOrdersForShortages(getDb(), parsed.data);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/inventory");
+  revalidatePath("/floor");
+  revalidatePath("/change");
+  const summary = result.created
+    .map((c) => `${c.key} ${c.partNumber} × ${c.qty}`)
+    .join(", ");
+  return {
+    ok: true,
+    error: "",
+    message: `Opened ${result.created.length} work order(s): ${summary}.`,
+  };
+}
+
+export async function createAndPinTestAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const configId = String(formData.get("configId") ?? "");
+  if (!configId) return fail("Config is required.");
+  const parsed = newTestDefSchema.safeParse({
+    key: formData.get("key"),
+    name: formData.get("name"),
+    description: String(formData.get("description") ?? ""),
+    appliesTo: formData.get("appliesTo") || "article",
+    unit: String(formData.get("unit") ?? ""),
+    limitMin: optionalNumber(formData.get("limitMin")),
+    limitMax: optionalNumber(formData.get("limitMax")),
+  });
+  if (!parsed.success) return fail("Key and name are required.");
+  const db = getDb();
+  const created = createTestDefinition(db, parsed.data);
+  if (!created.ok) return fail(created.error);
+  const linked = addRequiredTest(db, {
+    configId,
+    testDefinitionId: created.testDefinitionId,
+  });
+  if (!linked.ok) return fail(linked.error);
+  revalidatePath(`/configs/${configId}`);
+  revalidatePath("/procedures");
+  return { ok: true, error: "", message: `Pinned ${parsed.data.key}.` };
+}
+
+export async function createAndPinProcedureAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const configId = String(formData.get("configId") ?? "");
+  if (!configId) return fail("Config is required.");
+  const parsed = newProcedureSchema.safeParse({
+    key: formData.get("key"),
+    title: formData.get("title"),
+    body: String(formData.get("body") ?? ""),
+  });
+  if (!parsed.success) return fail("Key and title are required.");
+  const db = getDb();
+  const created = createProcedure(db, parsed.data);
+  if (!created.ok) return fail(created.error);
+  const linked = addProcedureLink(db, {
+    configId,
+    procedureId: created.procedureId,
+  });
+  if (!linked.ok) return fail(linked.error);
+  revalidatePath(`/configs/${configId}`);
+  revalidatePath("/procedures");
+  return { ok: true, error: "", message: `Linked ${parsed.data.key}.` };
 }

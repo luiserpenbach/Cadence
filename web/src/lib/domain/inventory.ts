@@ -85,7 +85,7 @@ export function createLot(
       partRevisionId: input.partRevisionId,
       qtyOnHand: input.qty,
       qtyReserved: 0,
-      location: input.location.trim() || "PROTO-CAGE",
+      location: input.location.trim() || "CAGE",
       lotCode,
     })
     .run();

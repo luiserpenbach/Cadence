@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import {
   addPoLineAction,
   adjustLotAction,
@@ -11,16 +11,22 @@ import {
   createLotAction,
   createPoAction,
   importBomCsvAction,
+  importCatalogCsvAction,
   issueKitAction,
   markPoOrderedAction,
   openShortagePoAction,
+  openShortageWoAction,
   receivePoAction,
   reverseAsBuiltAction,
   unallocateKitLineAction,
   updatePartAction,
+  createWorkOrderAction,
+  completeWorkOrderAction,
+  cancelWorkOrderAction,
   type ActionState,
 } from "../lib/actions";
 import { PartRevPicker, useRefreshOnOk } from "./pickers";
+import { IdentityField } from "./identity";
 import { buttonClass, compactInputClass, inputClass, subtleButtonClass } from "./ui";
 
 const initialState: ActionState = { ok: false, error: "" };
@@ -57,7 +63,7 @@ export function CreateLotForm({ partRevs }: { partRevs: PartRev[] }) {
       </div>
       <input name="location" placeholder="Location" className={inputClass} />
       <div className="flex gap-2">
-        <input name="by" defaultValue="m.chen" className={`w-32 ${inputClass}`} />
+        <IdentityField className={`w-32 ${inputClass}`} />
         <input name="reason" placeholder="Reason (optional)" className={inputClass} />
       </div>
       <ActionError state={state} />
@@ -96,7 +102,7 @@ export function AdjustLotForm({
         />
         <input name="reason" required placeholder="Reason" className={inputClass} />
       </div>
-      <input name="by" defaultValue="m.chen" className={inputClass} />
+      <IdentityField />
       <ActionError state={state} />
       <ActionMessage state={state} />
       <button type="submit" disabled={pending} className={subtleButtonClass}>
@@ -111,9 +117,9 @@ export function CreatePoForm() {
   useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
-      <input name="poNumber" required placeholder="PO number" className={`font-mono ${inputClass}`} />
       <input name="supplier" required placeholder="Supplier" className={inputClass} />
       <input name="notes" placeholder="Notes" className={inputClass} />
+      <p className="text-xs text-[var(--muted)]">PO number is assigned on create (PO-001…).</p>
       <ActionError state={state} />
       <ActionMessage state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
@@ -165,10 +171,14 @@ export function PoStatusButtons({ poId, status }: { poId: string; status: string
         </form>
       ) : null}
       {status !== "received" ? (
-        <form action={recvAction} className="flex flex-wrap items-end gap-2">
+        <form action={recvAction} className="space-y-2">
           <input type="hidden" name="poId" value={poId} />
-          <input name="by" defaultValue="m.chen" className={`w-32 ${inputClass}`} />
-          <input name="location" placeholder="Location" className={`w-40 ${inputClass}`} />
+          <div className="flex flex-wrap items-end gap-2">
+            <IdentityField className={`w-32 ${inputClass}`} />
+            <input name="location" placeholder="Location" className={`w-40 ${inputClass}`} />
+          </div>
+          <input name="certUrl" placeholder="Cert URL (optional)" className={inputClass} />
+          <input name="certNotes" placeholder="Cert notes (optional)" className={inputClass} />
           <button type="submit" disabled={recvPending} className={buttonClass}>
             Receive into stock
           </button>
@@ -190,7 +200,7 @@ export function ShortagePoForm({ configId }: { configId: string }) {
       <input type="hidden" name="configId" value={configId} />
       <div className="flex flex-wrap gap-2">
         <input name="supplier" required placeholder="Supplier" className={inputClass} />
-        <input name="by" defaultValue="m.chen" className={`w-32 ${inputClass}`} />
+        <IdentityField className={`w-32 ${inputClass}`} />
         <button type="submit" disabled={pending} className={buttonClass}>
           Open PO for shortages
         </button>
@@ -212,7 +222,7 @@ export function CreateKitForm({
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="articleId" value={articleId} />
       <input type="hidden" name="configId" value={configId} />
-      <input name="by" defaultValue="m.chen" className={inputClass} />
+      <IdentityField />
       <input name="notes" placeholder="Notes (optional)" className={inputClass} />
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
@@ -250,7 +260,7 @@ export function AllocateKitLineForm({
           </option>
         ))}
       </select>
-      <input name="by" defaultValue="m.chen" className={`w-24 ${compactInputClass}`} />
+      <IdentityField compact className={`w-24 ${compactInputClass}`} />
       <button type="submit" disabled={pending} className="text-xs underline">
         Allocate
       </button>
@@ -275,7 +285,7 @@ export function UnallocateKitLineForm({
     <form action={formAction} className="inline">
       <input type="hidden" name="kitId" value={kitId} />
       <input type="hidden" name="kitLineId" value={kitLineId} />
-      <input type="hidden" name="by" value="m.chen" />
+      <IdentityField hidden />
       {state.error ? <span className="mr-1 text-xs text-[var(--danger)]">{state.error}</span> : null}
       <button type="submit" disabled={pending} className="text-xs underline">
         Unallocate
@@ -284,13 +294,7 @@ export function UnallocateKitLineForm({
   );
 }
 
-export function AllocateRemainingForm({
-  kitId,
-  by,
-}: {
-  kitId: string;
-  by?: string;
-}) {
+export function AllocateRemainingForm({ kitId }: { kitId: string }) {
   const [state, formAction, pending] = useActionState(
     allocateRemainingAction,
     initialState,
@@ -299,11 +303,7 @@ export function AllocateRemainingForm({
   return (
     <form action={formAction} className="space-y-2">
       <input type="hidden" name="kitId" value={kitId} />
-      {by ? (
-        <input type="hidden" name="by" value={by} />
-      ) : (
-        <input name="by" defaultValue="m.chen" className={inputClass} />
-      )}
+      <IdentityField />
       <ActionError state={state} />
       <ActionMessage state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
@@ -332,23 +332,16 @@ export function KitLifecycleButtons({
   );
   useRefreshOnOk(issueState);
   useRefreshOnOk(cancelState);
-  const [by, setBy] = useState("m.chen");
   return (
     <div className="space-y-3">
-      <input
-        value={by}
-        onChange={(e) => setBy(e.target.value)}
-        className={inputClass}
-        aria-label="Identity"
-      />
       {status === "open" || status === "reserved" ? (
-        <AllocateRemainingForm kitId={kitId} by={by} />
+        <AllocateRemainingForm kitId={kitId} />
       ) : null}
       {status === "open" || status === "reserved" ? (
         <form action={issueAction} className="space-y-2">
           <input type="hidden" name="kitId" value={kitId} />
           <input type="hidden" name="articleId" value={articleId} />
-          <input type="hidden" name="by" value={by} />
+          <IdentityField />
           <ActionError state={issueState} />
           <ActionMessage state={issueState} />
           <button type="submit" disabled={issuePending} className={buttonClass}>
@@ -359,7 +352,7 @@ export function KitLifecycleButtons({
       {status !== "issued" && status !== "cancelled" ? (
         <form action={cancelAction} className="space-y-2">
           <input type="hidden" name="kitId" value={kitId} />
-          <input type="hidden" name="by" value={by} />
+          <IdentityField />
           <ActionError state={cancelState} />
           <ActionMessage state={cancelState} />
           <button type="submit" disabled={cancelPending} className={subtleButtonClass}>
@@ -455,10 +448,120 @@ export function ReverseAsBuiltButton({
     <form action={formAction} className="inline">
       <input type="hidden" name="asBuiltId" value={asBuiltId} />
       <input type="hidden" name="articleId" value={articleId} />
-      <input type="hidden" name="by" value="m.chen" />
+      <IdentityField hidden />
       {state.error ? <span className="mr-1 text-xs text-[var(--danger)]">{state.error}</span> : null}
       <button type="submit" disabled={pending} className="text-xs text-[var(--danger)] underline">
         reverse
+      </button>
+    </form>
+  );
+}
+
+export function ImportCatalogForm() {
+  const [state, formAction, pending] = useActionState(
+    importCatalogCsvAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <textarea
+        name="csv"
+        placeholder={"part,name,rev,category,sourcing,kind,description\nINJ-100,Injector,A,injector,make,component,"}
+        className={`min-h-24 font-mono text-xs ${inputClass}`}
+      />
+      <input type="file" name="file" accept=".csv,text/csv" className="block w-full text-sm" />
+      <ActionError state={state} />
+      <ActionMessage state={state} />
+      <button type="submit" disabled={pending} className={subtleButtonClass}>
+        Import parts CSV
+      </button>
+    </form>
+  );
+}
+
+export function ShortageWoForm({ configId }: { configId: string }) {
+  const [state, formAction, pending] = useActionState(
+    openShortageWoAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <input type="hidden" name="configId" value={configId} />
+      <IdentityField className={`w-32 ${inputClass}`} />
+      <ActionError state={state} />
+      <ActionMessage state={state} />
+      <button type="submit" disabled={pending} className={subtleButtonClass}>
+        Open work orders for make shorts
+      </button>
+    </form>
+  );
+}
+
+export function CreateWorkOrderForm({ partRevs }: { partRevs: PartRev[] }) {
+  const [state, formAction, pending] = useActionState(
+    createWorkOrderAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  return (
+    <form action={formAction} className="mt-3 space-y-2">
+      <PartRevPicker name="partRevisionId" options={partRevs} />
+      <div className="flex gap-2">
+        <input name="qty" type="number" step="any" min="0" defaultValue="1" className={`w-24 ${inputClass}`} />
+        <input name="lotCode" placeholder="Lot code (optional)" className={`font-mono ${inputClass}`} />
+      </div>
+      <input name="location" placeholder="Location (SHOP)" className={inputClass} />
+      <input name="notes" placeholder="Notes" className={inputClass} />
+      <IdentityField />
+      <ActionError state={state} />
+      <ActionMessage state={state} />
+      <button type="submit" disabled={pending} className={buttonClass}>
+        Open work order
+      </button>
+    </form>
+  );
+}
+
+export function CompleteWorkOrderForm({
+  workOrderId,
+}: {
+  workOrderId: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    completeWorkOrderAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  return (
+    <form action={formAction} className="flex flex-wrap items-center gap-1.5">
+      <input type="hidden" name="workOrderId" value={workOrderId} />
+      <IdentityField compact className={`w-24 ${compactInputClass}`} />
+      <button type="submit" disabled={pending} className="text-xs underline">
+        Complete → lot
+      </button>
+      {state.error ? <span className="text-xs text-[var(--danger)]">{state.error}</span> : null}
+      {state.ok && state.message ? (
+        <span className="text-xs text-[var(--ok)]">{state.message}</span>
+      ) : null}
+    </form>
+  );
+}
+
+export function CancelWorkOrderForm({ workOrderId }: { workOrderId: string }) {
+  const [state, formAction, pending] = useActionState(
+    cancelWorkOrderAction,
+    initialState,
+  );
+  useRefreshOnOk(state);
+  return (
+    <form action={formAction} className="inline">
+      <input type="hidden" name="workOrderId" value={workOrderId} />
+      <IdentityField hidden />
+      {state.error ? <span className="mr-1 text-xs text-[var(--danger)]">{state.error}</span> : null}
+      <button type="submit" disabled={pending} className="text-xs text-[var(--danger)] underline">
+        cancel
       </button>
     </form>
   );

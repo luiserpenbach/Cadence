@@ -8,14 +8,34 @@ export type CutConfigInput = {
   key: string;
   name: string;
   riskClass: string;
+  program?: string;
+  envelope?: string;
+  applyLatestRevs?: boolean;
 };
 
 export type CutConfigResult =
-  | { ok: true; configId: string }
+  | { ok: true; configId: string; swapped: Array<{ findNumber: string; partNumber: string; fromRev: string; toRev: string }> }
   | { ok: false; error: string };
+
+function sortRevs(a: string, b: string) {
+  return a.length - b.length || a.localeCompare(b);
+}
+
+function latestRevForPart(
+  db: { select: Db["select"] } | Db,
+  partId: string,
+): typeof s.partRevisions.$inferSelect | undefined {
+  const revs = (db as Db)
+    .select()
+    .from(s.partRevisions)
+    .where(eq(s.partRevisions.partId, partId))
+    .all();
+  return revs.sort((x, y) => sortRevs(x.revision, y.revision)).at(-1);
+}
 
 // Copies BoM pins, required tests, procedures, and effectivity (including
 // explicit article links) from the base config into a new draft, atomically.
+// When applyLatestRevs is set, pins that have a newer catalog rev are swapped.
 export function cutConfiguration(db: Db, input: CutConfigInput): CutConfigResult {
   const base = db
     .select()
@@ -34,6 +54,12 @@ export function cutConfiguration(db: Db, input: CutConfigInput): CutConfigResult
   }
 
   const newId = id("cfg");
+  const swapped: Array<{
+    findNumber: string;
+    partNumber: string;
+    fromRev: string;
+    toRev: string;
+  }> = [];
   db.transaction((tx) => {
     tx.insert(s.configurations)
       .values({
@@ -44,6 +70,8 @@ export function cutConfiguration(db: Db, input: CutConfigInput): CutConfigResult
         status: "draft",
         riskClass: input.riskClass,
         basedOnConfigId: input.basedOnId,
+        program: (input.program?.trim() || base.program).trim(),
+        envelope: (input.envelope?.trim() || base.envelope).trim(),
         notes: `Cut from ${base.key}`,
       })
       .run();
@@ -54,15 +82,44 @@ export function cutConfiguration(db: Db, input: CutConfigInput): CutConfigResult
       .where(eq(s.configBomLines.configId, input.basedOnId))
       .all();
     for (const line of bom) {
+      let pinRevId = line.partRevisionId;
+      let notes = line.notes;
+      if (input.applyLatestRevs) {
+        const current = tx
+          .select()
+          .from(s.partRevisions)
+          .where(eq(s.partRevisions.id, line.partRevisionId))
+          .get();
+        if (current) {
+          const latest = latestRevForPart(tx as unknown as Db, current.partId);
+          if (latest && latest.id !== current.id) {
+            const part = tx
+              .select()
+              .from(s.parts)
+              .where(eq(s.parts.id, current.partId))
+              .get();
+            swapped.push({
+              findNumber: line.findNumber,
+              partNumber: part?.partNumber ?? current.partId,
+              fromRev: current.revision,
+              toRev: latest.revision,
+            });
+            pinRevId = latest.id;
+            notes = [notes, `cut-in ${current.revision}→${latest.revision}`]
+              .filter(Boolean)
+              .join(" · ");
+          }
+        }
+      }
       const newBomId = id("bom");
       tx.insert(s.configBomLines)
         .values({
           id: newBomId,
           configId: newId,
-          partRevisionId: line.partRevisionId,
+          partRevisionId: pinRevId,
           qty: line.qty,
           findNumber: line.findNumber,
-          notes: line.notes,
+          notes,
         })
         .run();
       const alts = tx
@@ -145,7 +202,19 @@ export function cutConfiguration(db: Db, input: CutConfigInput): CutConfigResult
           .run();
       }
     }
+
+    if (input.applyLatestRevs) {
+      const cutNote = swapped.length
+        ? `Cut from ${base.key} · swapped ${swapped
+            .map((x) => `${x.partNumber} ${x.fromRev}→${x.toRev}`)
+            .join(", ")}`
+        : `Cut from ${base.key} · pins already at latest rev`;
+      tx.update(s.configurations)
+        .set({ notes: cutNote })
+        .where(eq(s.configurations.id, newId))
+        .run();
+    }
   });
 
-  return { ok: true, configId: newId };
+  return { ok: true, configId: newId, swapped };
 }

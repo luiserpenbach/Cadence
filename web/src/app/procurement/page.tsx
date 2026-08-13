@@ -38,10 +38,12 @@ export default function ProcurementPage() {
       id: s.partRevisions.id,
       partNumber: s.parts.partNumber,
       revision: s.partRevisions.revision,
+      sourcing: s.parts.sourcing,
     })
     .from(s.partRevisions)
     .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
     .all()
+    .filter((p) => p.sourcing !== "make")
     .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
   const partRevOptions = partRevs.map((p) => ({
     id: p.id,
@@ -75,6 +77,8 @@ export default function ProcurementPage() {
                   {po.supplier}
                   {po.notes ? ` — ${po.notes}` : ""}
                   {po.receivedBy ? ` · received by ${po.receivedBy}` : ""}
+                  {po.certUrl ? ` · cert ${po.certUrl}` : ""}
+                  {po.certNotes ? ` · ${po.certNotes}` : ""}
                 </p>
                 <div className="mt-3">
                   <DataTable

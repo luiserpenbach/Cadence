@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { IdentityChip } from "./identity";
 
 const groups = [
   {
@@ -85,6 +86,7 @@ export function AppHeader() {
             </div>
           ))}
         </nav>
+        <IdentityChip />
       </div>
       <div className="h-px bg-[var(--line)]" />
     </header>

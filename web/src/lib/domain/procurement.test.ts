@@ -83,4 +83,61 @@ describe("procurement", () => {
       .get()!;
     expect(line.qty).toBe(4);
   });
+
+  it("auto-numbers POs, rejects make parts, and stores receive certs", () => {
+    const po = createPurchaseOrder(db, { supplier: "CryoFit", notes: "" });
+    expect(po.ok).toBe(true);
+    if (!po.ok) return;
+    expect(po.poNumber).toBe("PO-001");
+    const make = makePart(db, "INJ-100", "A", { sourcing: "make" }).revId;
+    expect(
+      addPurchaseOrderLine(db, {
+        poId: po.poId,
+        partRevisionId: make,
+        qty: 1,
+        unitCost: 0,
+      }).ok,
+    ).toBe(false);
+    expect(
+      addPurchaseOrderLine(db, {
+        poId: po.poId,
+        partRevisionId: revId,
+        qty: 1,
+        unitCost: 0,
+      }).ok,
+    ).toBe(true);
+    expect(
+      receivePurchaseOrder(db, {
+        poId: po.poId,
+        by: "cage",
+        certUrl: "https://certs.example/cofc",
+        certNotes: "CoC on file",
+      }).ok,
+    ).toBe(true);
+    const stored = db.select().from(s.purchaseOrders).all()[0];
+    expect(stored.certUrl).toContain("cofc");
+    expect(stored.certNotes).toBe("CoC on file");
+  });
+
+  it("shortage POs skip make parts", () => {
+    const make = makePart(db, "INJ-100", "A", { sourcing: "make" }).revId;
+    const configId = makeConfig(db, "CFG-N", { status: "released" });
+    addBomLine(db, configId, make, 1, "10");
+    db.insert(s.configEffectivity)
+      .values({
+        id: "eff-make",
+        configId,
+        articleScope: "any",
+        standScope: "any",
+      })
+      .run();
+    const result = openPoForShortages(db, {
+      configId,
+      supplier: "CryoFit",
+      by: "re",
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("work order");
+  });
 });
