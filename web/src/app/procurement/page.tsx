@@ -49,11 +49,8 @@ export default function ProcurementPage() {
   }));
 
   return (
-    <AppShell
-      title="Procurement"
-      subtitle="Demand signal and simple POs — receive into stock so inventory stays true."
-    >
-      <div className="grid gap-5 lg:grid-cols-3">
+    <AppShell title="Procurement">
+      <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-5">
           {orders.length === 0 ? (
             <Panel>No purchase orders yet — create one to the right.</Panel>
@@ -61,7 +58,7 @@ export default function ProcurementPage() {
             orders.map((po) => (
               <Panel key={po.id}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-display text-xl">{po.poNumber}</h2>
+                  <h2 className="font-display">{po.poNumber}</h2>
                   <Badge
                     tone={
                       po.status === "received"
@@ -106,7 +103,7 @@ export default function ProcurementPage() {
           )}
         </div>
         <Panel>
-          <h2 className="font-display text-xl">New PO</h2>
+          <h2 className="font-display">New PO</h2>
           <CreatePoForm />
         </Panel>
       </div>

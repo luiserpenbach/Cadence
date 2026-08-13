@@ -68,9 +68,9 @@ export default async function PartDetailPage({
         </Badge>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display text-xl">Revisions</h2>
+          <h2 className="font-display">Revisions</h2>
           <div className="mt-3">
             <DataTable
               headers={["Rev", "Status", "Notes", "On hand", "Created"]}
@@ -93,7 +93,7 @@ export default async function PartDetailPage({
             />
           </div>
 
-          <h2 className="mt-6 font-display text-xl">Where used</h2>
+          <h2 className="mt-6 font-display">Where used</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {usage.map((u, idx) => (
               <li key={idx} className="flex flex-wrap items-center gap-2">
@@ -120,29 +120,26 @@ export default async function PartDetailPage({
               </li>
             ))}
             {usage.length === 0 ? (
-              <li className="text-[var(--muted)]">Not pinned by any config.</li>
+              <li className="text-[var(--muted)]">Not used in any config.</li>
             ) : null}
           </ul>
         </Panel>
 
         <div className="space-y-5">
           <Panel>
-            <h2 className="font-display text-xl">Edit part</h2>
+            <h2 className="font-display">Edit part</h2>
             <EditPartForm part={part} />
           </Panel>
 
           <Panel>
-            <h2 className="font-display text-xl">Attachments</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Drawings, datasheets, certs — attachments, not truth.
-            </p>
+            <h2 className="font-display">Attachments</h2>
             <div className="mt-2">
               <AttachmentsPanel entityType="part" entityId={part.id} />
             </div>
           </Panel>
 
           <Panel>
-            <h2 className="font-display text-xl">New revision</h2>
+            <h2 className="font-display">New revision</h2>
             <NewRevisionForm
               parts={[{ id: part.id, partNumber: part.partNumber }]}
             />

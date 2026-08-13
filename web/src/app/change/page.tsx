@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass, linkClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -27,14 +27,14 @@ export default async function ChangePage({
 
   const picker = (
     <Panel>
-      <h2 className="font-display text-xl">Compare configs</h2>
+      <h2 className="font-display">Compare configs</h2>
       <form method="get" className="mt-3 flex flex-wrap items-end gap-2">
         <label className="block text-sm">
           From
           <select
             name="from"
             defaultValue={fromId}
-            className="mt-1 block rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            className={`mt-1 block ${inputClass}`}
           >
             {configs.map((c) => (
               <option key={c.id} value={c.id}>
@@ -48,7 +48,7 @@ export default async function ChangePage({
           <select
             name="to"
             defaultValue={toId}
-            className="mt-1 block rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            className={`mt-1 block ${inputClass}`}
           >
             {configs.map((c) => (
               <option key={c.id} value={c.id}>
@@ -59,7 +59,7 @@ export default async function ChangePage({
         </label>
         <button
           type="submit"
-          className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
+          className={buttonClass}
         >
           Compare
         </button>
@@ -69,13 +69,10 @@ export default async function ChangePage({
 
   if (!impact) {
     return (
-      <AppShell
-        title="Change impact"
-        subtitle="Pick two configs to see the delta and blast radius."
-      >
+      <AppShell title="Change">
         {configs.length === 0 ? (
           <Panel>
-            No configs yet — author one on the{" "}
+            No configs yet — create one on the{" "}
             <Link className="underline" href="/configs">
               Configs
             </Link>{" "}
@@ -92,8 +89,8 @@ export default async function ChangePage({
 
   return (
     <AppShell
-      title="Change impact"
-      subtitle={`${from.key} → ${to.key} — blast radius for the overnight cut-in.`}
+      title="Change"
+      subtitle={`${from.key} → ${to.key}`}
     >
       <div className="mb-5">{picker}</div>
 
@@ -109,9 +106,9 @@ export default async function ChangePage({
         ) : null}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display text-xl">BoM delta</h2>
+          <h2 className="font-display">BoM delta</h2>
           <div className="mt-3">
             <DataTable
               headers={["Change", "Find", "Part", "Detail"]}
@@ -155,7 +152,7 @@ export default async function ChangePage({
         </Panel>
 
         <Panel>
-          <h2 className="font-display text-xl">Test matrix</h2>
+          <h2 className="font-display">Test matrix</h2>
           <p className="mt-2 text-sm text-[var(--muted)]">
             {impact.staleTestHint}
           </p>
@@ -193,22 +190,16 @@ export default async function ChangePage({
           </div>
           <Link
             href={`/configs/${to.id}`}
-            className="mt-4 inline-block text-sm text-[var(--accent)] underline"
+            className={`mt-4 inline-block ${linkClass}`}
           >
             Open {to.key}
           </Link>
         </Panel>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <Panel>
-          <h2 className="font-display text-xl">Inventory shortages</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Demand is {impact.kitCount} kit{impact.kitCount === 1 ? "" : "s"} of{" "}
-            {to.key} (articles covered by the new config, minimum 1). Available
-            is on-hand minus kit reservations; inbound POs count toward covering
-            the gap.
-          </p>
+          <h2 className="font-display">Inventory shortages</h2>
           {impact.inventoryShortages.length === 0 ? (
             <p className="mt-2 text-sm text-[var(--muted)]">
               Enough on hand (plus inbound POs) for {impact.kitCount} kit
@@ -236,7 +227,7 @@ export default async function ChangePage({
           )}
         </Panel>
         <Panel>
-          <h2 className="font-display text-xl">Articles still on prior</h2>
+          <h2 className="font-display">Articles still on prior</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Serials before the {to.key} effectivity cut-in remain on {from.key}.
           </p>

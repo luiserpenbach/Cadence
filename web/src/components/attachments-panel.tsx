@@ -23,7 +23,7 @@ export function AttachmentsPanel({
         {attachments.map((a) => (
           <li
             key={a.id}
-            className="flex flex-wrap items-center gap-2 rounded-md bg-[var(--panel-strong)] px-3 py-2"
+            className="flex flex-wrap items-center gap-2 rounded-none bg-[var(--panel-strong)] px-3 py-2"
           >
             <Badge tone={a.kind === "file" ? "accent" : "neutral"}>
               {a.kind}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -54,22 +54,19 @@ export default async function CatalogPage({
     );
 
   return (
-    <AppShell
-      title="Catalog"
-      subtitle="Parts and revisions. Rev only when the artifact changes — configs absorb system recipe churn."
-    >
-      <div className="grid gap-5 lg:grid-cols-3">
+    <AppShell title="Catalog">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <form method="get" className="mb-4 flex gap-2">
             <input
               name="q"
               defaultValue={q}
               placeholder="Search part number, name, category…"
-              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+              className={inputClass}
             />
             <button
               type="submit"
-              className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
+              className={buttonClass}
             >
               Search
             </button>
@@ -118,14 +115,11 @@ export default async function CatalogPage({
 
         <div className="space-y-5">
           <Panel>
-            <h2 className="font-display text-xl">New part</h2>
+            <h2 className="font-display">New part</h2>
             <NewPartForm />
           </Panel>
           <Panel>
-            <h2 className="font-display text-xl">New revision</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Only when the artifact changes (drawing, material, interface).
-            </p>
+            <h2 className="font-display">New revision</h2>
             <NewRevisionForm
               parts={parts
                 .slice()
@@ -134,12 +128,7 @@ export default async function CatalogPage({
             />
           </Panel>
           <Panel>
-            <h2 className="font-display text-xl">Cut in a revision</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              One shot: drafts every released config pinning an older rev of
-              this part, with the pin swapped. Review effectivity, then
-              release.
-            </p>
+            <h2 className="font-display">Cut in a revision</h2>
             <CutInRevisionForm
               partRevs={partRevOptions.map((p) => ({
                 id: p.id,

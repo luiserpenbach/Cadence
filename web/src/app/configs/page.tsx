@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, linkClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -14,11 +14,8 @@ export default function ConfigsPage() {
   const byId = Object.fromEntries(configs.map((c) => [c.id, c]));
 
   return (
-    <AppShell
-      title="Configurations"
-      subtitle="Cheap to create, gated to release. Article configs and stand configs are separate deployable units."
-    >
-      <div className="grid gap-5 lg:grid-cols-3">
+    <AppShell title="Configs">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <DataTable
             headers={["Key", "Kind", "Status", "Risk", "Based on", ""]}
@@ -55,7 +52,7 @@ export default function ConfigsPage() {
               <Link
                 key="o"
                 href={`/configs/${c.id}`}
-                className="text-sm text-[var(--accent)]"
+                className={linkClass}
               >
                 Open
               </Link>,
@@ -65,26 +62,22 @@ export default function ConfigsPage() {
 
         <div className="space-y-5">
         <Panel>
-          <h2 className="font-display text-xl">Cut new config</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Clone BoM pins, procedures, and required tests from a parent.
-          </p>
+          <h2 className="font-display">Cut new config</h2>
           <CutConfigForm
             configs={configs.map((c) => ({
               id: c.id,
               key: c.key,
               kind: c.kind,
             }))}
-            defaultBasedOnId={configs.find((c) => c.key === "CH4-FEED-N+1")?.id}
+            defaultBasedOnId={
+              [...configs].reverse().find((c) => c.status === "released")?.id ??
+              configs[0]?.id
+            }
           />
         </Panel>
 
         <Panel>
-          <h2 className="font-display text-xl">New config from scratch</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Empty draft — author BoM pins, tests, procedures, and effectivity
-            on the config page.
-          </p>
+          <h2 className="font-display">New config</h2>
           <NewConfigForm />
         </Panel>
         </div>

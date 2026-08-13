@@ -71,10 +71,10 @@ export default async function RunDetailPage({
   const procedureStatus = listRunProcedureStatus(db, run.id);
 
   return (
-    <AppShell title={run.key} subtitle={`Bound run on ${article.serial} @ ${stand.key}`}>
+    <AppShell title={run.key} subtitle={`${article.serial} @ ${stand.key}`}>
       {articleConfig.status === "superseded" ||
       standConfig.status === "superseded" ? (
-        <div className="mb-5 rounded-lg border border-amber-300 bg-amber-100 px-4 py-3 text-amber-950">
+        <div className="alert alert-warn mb-5">
           <div className="font-medium">
             ⚠ This run is bound to a superseded config
           </div>
@@ -118,9 +118,9 @@ export default async function RunDetailPage({
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display text-xl">Binding</h2>
+          <h2 className="font-display">Binding</h2>
           <dl className="mt-3 grid gap-3 sm:grid-cols-2 text-sm">
             <div>
               <dt className="text-[var(--muted)]">Article</dt>
@@ -158,15 +158,12 @@ export default async function RunDetailPage({
             </div>
           </dl>
 
-          <h2 className="mt-6 font-display text-xl">Verification gaps</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Record-and-warn: you can proceed after acknowledging gaps.
-          </p>
+          <h2 className="mt-6 font-display">Verification gaps</h2>
           <ul className="mt-3 space-y-2">
             {verification.gaps.map((g) => (
               <li
                 key={g.testDefinitionId + g.source}
-                className="flex flex-wrap items-center gap-2 rounded-md bg-[var(--panel-strong)] px-3 py-2 text-sm"
+                className="flex flex-wrap items-center gap-2 rounded-none bg-[var(--panel-strong)] px-3 py-2 text-sm"
               >
                 <Badge
                   tone={
@@ -207,7 +204,7 @@ export default async function RunDetailPage({
 
         <div className="space-y-5">
           <Panel>
-            <h2 className="font-display text-xl">Record test</h2>
+            <h2 className="font-display">Record test</h2>
             {missing.length === 0 ? (
               <p className="mt-2 text-sm text-[var(--muted)]">
                 No missing required tests.
@@ -224,11 +221,7 @@ export default async function RunDetailPage({
           </Panel>
 
           <Panel>
-            <h2 className="font-display text-xl">Waive test</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Waivers are explicit objects — who, why, which test. Never a
-              silent green.
-            </p>
+            <h2 className="font-display">Waive test</h2>
             {waivable.length === 0 ? (
               <p className="mt-2 text-sm text-[var(--muted)]">
                 No open gaps to waive.
@@ -247,18 +240,14 @@ export default async function RunDetailPage({
       </div>
 
       <Panel className="mt-5">
-        <h2 className="font-display text-xl">Procedures (as-run)</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Procedures execute step by step against this run — each step is a
-          signed record, not a checkbox on a PDF.
-        </p>
+        <h2 className="font-display">Procedures</h2>
         <ul className="mt-3 space-y-2">
           {procedureStatus.map((p) => (
             <li
               key={p.procedureId + p.source}
-              className="flex flex-wrap items-center gap-2 rounded-md bg-[var(--panel-strong)] px-3 py-2 text-sm"
+              className="flex flex-wrap items-center gap-2 rounded-none bg-[var(--panel-strong)] px-3 py-2 text-sm"
             >
-              <span className="font-mono text-xs text-[var(--accent)]">
+              <span className="font-mono text-xs text-[var(--muted)]">
                 {p.procedureKey} · v{p.version}
               </span>
               <span>{p.procedureTitle}</span>
@@ -313,7 +302,7 @@ export default async function RunDetailPage({
       </Panel>
 
       <Panel className="mt-5">
-        <h2 className="font-display text-xl">Recorded results</h2>
+        <h2 className="font-display">Recorded results</h2>
         <div className="mt-3">
           <DataTable
             headers={["Test", "Status", "Value", "By"]}

@@ -17,16 +17,14 @@ import {
   waiveTest,
   type ActionState,
 } from "../lib/actions";
+import { buttonClass, compactInputClass, inputClass, subtleButtonClass } from "./ui";
 
 const initialState: ActionState = { ok: false, error: "" };
-
-const inputClass =
-  "w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm";
 
 function ActionError({ state }: { state: ActionState }) {
   if (!state.error) return null;
   return (
-    <p className="rounded-md bg-rose-100 px-3 py-2 text-sm text-rose-950">
+    <p className="msg-error">
       {state.error}
     </p>
   );
@@ -51,7 +49,7 @@ export function AckGapsForm({ runId }: { runId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-[var(--accent-hot)] px-4 py-2 text-sm text-white disabled:opacity-60"
+        className="rounded-none bg-[var(--accent-hot)] px-3.5 py-1.5 text-sm font-medium text-[var(--bg0)] disabled:opacity-50"
       >
         Acknowledge gaps &amp; proceed
       </button>
@@ -95,7 +93,7 @@ export function RecordTestForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+        className={buttonClass}
       >
         Save result
       </button>
@@ -140,7 +138,7 @@ export function NewRunForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+        className={buttonClass}
       >
         Resolve configs &amp; bind run
       </button>
@@ -167,11 +165,7 @@ export function RunLifecycleForm({
       <button
         type="submit"
         disabled={pending}
-        className={
-          transition === "start"
-            ? "rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
-            : "rounded-md border border-[var(--line)] px-4 py-2 text-sm disabled:opacity-60"
-        }
+        className={transition === "start" ? buttonClass : subtleButtonClass}
       >
         {transition === "start" ? "Start run" : "Complete run"}
       </button>
@@ -197,17 +191,17 @@ export function StartExecutionForm({
       <input
         name="by"
         defaultValue="tech.lee"
-        className="w-28 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+        className={`w-28 ${compactInputClass}`}
       />
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-[var(--ink)] px-3 py-1.5 text-xs text-[var(--bg0)] disabled:opacity-60"
+        className={buttonClass}
       >
         Start execution
       </button>
       {state.error ? (
-        <span className="text-xs text-rose-700">{state.error}</span>
+        <span className="text-xs text-[var(--danger)]">{state.error}</span>
       ) : null}
     </form>
   );
@@ -253,7 +247,7 @@ export function RecordStepForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+        className={buttonClass}
       >
         Record step {stepIndex + 1}
       </button>
@@ -293,7 +287,7 @@ export function AbortExecutionForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md border border-rose-300 px-3 py-1.5 text-sm text-rose-700 disabled:opacity-60"
+        className="rounded-none border border-[color-mix(in_oklab,var(--danger)_40%,var(--line))] px-3 py-1.5 text-sm text-[var(--danger)] disabled:opacity-50"
       >
         Abort execution
       </button>
@@ -335,7 +329,7 @@ export function WaiverForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md border border-[var(--line)] px-4 py-2 text-sm disabled:opacity-60"
+        className={subtleButtonClass}
       >
         Record waiver
       </button>
@@ -389,7 +383,7 @@ export function ReleaseConfigForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+        className={buttonClass}
       >
         Release config
       </button>
@@ -415,7 +409,7 @@ export function RequestReleaseForm({ configId }: { configId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+        className={buttonClass}
       >
         Request release
       </button>
@@ -455,7 +449,7 @@ export function ApproveReleaseForm({
         <button
           type="submit"
           disabled={approvePending}
-          className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+          className={buttonClass}
         >
           Approve &amp; release
         </button>
@@ -507,7 +501,7 @@ export function CutConfigForm({
         <input
           name="key"
           required
-          placeholder="CH4-FEED-N+2"
+          placeholder="Key"
           className={`mt-1 font-mono ${inputClass}`}
         />
       </label>
@@ -516,7 +510,7 @@ export function CutConfigForm({
         <input
           name="name"
           required
-          placeholder="Next overnight cut"
+          placeholder="Name"
           className={`mt-1 ${inputClass}`}
         />
       </label>
@@ -534,7 +528,7 @@ export function CutConfigForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60"
+        className={buttonClass}
       >
         Create draft
       </button>

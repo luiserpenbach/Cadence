@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, linkClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -29,19 +29,16 @@ export default function KitsPage() {
   }
 
   return (
-    <AppShell
-      title="Kits"
-      subtitle="Reserve lots against a released config, then issue to stamp as-built."
-    >
+    <AppShell title="Kits">
       <Panel>
         <DataTable
           empty={
             <>
-              No kits yet — pull one from the{" "}
+              No kits yet — create one from the{" "}
               <Link className="underline" href="/floor">
                 Floor
-              </Link>{" "}
-              recipe.
+              </Link>
+              .
             </>
           }
           headers={["Key", "Article", "Config", "Status", "Allocated", ""]}
@@ -69,7 +66,7 @@ export default function KitsPage() {
                 {k.status}
               </Badge>,
               `${allocated}/${kitLines.length}`,
-              <Link key="o" className="text-sm text-[var(--accent)] underline" href={`/kits/${k.id}`}>
+              <Link key="o" className={linkClass} href={`/kits/${k.id}`}>
                 Open
               </Link>,
             ];

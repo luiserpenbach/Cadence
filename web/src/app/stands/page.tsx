@@ -11,11 +11,8 @@ export default function StandsPage() {
   const stands = getDb().select().from(s.stands).all();
 
   return (
-    <AppShell
-      title="Test stands"
-      subtitle="First-class effectivity axis. Stand configs own bench infrastructure separate from article hardware."
-    >
-      <div className="grid gap-5 lg:grid-cols-3">
+    <AppShell title="Stands">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <DataTable
             headers={["Key", "Name", "Location", "Notes"]}
@@ -33,7 +30,7 @@ export default function StandsPage() {
         </Panel>
 
         <Panel>
-          <h2 className="font-display text-xl">New stand</h2>
+          <h2 className="font-display">New stand</h2>
           <NewStandForm />
         </Panel>
       </div>
