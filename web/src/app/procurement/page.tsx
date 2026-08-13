@@ -49,10 +49,7 @@ export default function ProcurementPage() {
   }));
 
   return (
-    <AppShell
-      title="Procurement"
-      subtitle="Demand signal and simple POs — receive into stock so inventory stays true."
-    >
+    <AppShell title="Procurement">
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-5">
           {orders.length === 0 ? (

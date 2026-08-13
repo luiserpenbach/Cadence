@@ -167,10 +167,6 @@ export default async function KitDetailPage({
         </Panel>
         <Panel>
           <h2 className="font-display">Issue</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Allocate every line, then issue. Cadence reserves on allocate and
-            consumes + stamps as-built on issue.
-          </p>
           <div className="mt-3">
             <KitLifecycleButtons
               kitId={kit.id}

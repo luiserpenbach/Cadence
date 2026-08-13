@@ -27,7 +27,7 @@ export default async function ExecutionPage({
   return (
     <AppShell
       title={`${procedure.key} · v${procedure.version}`}
-      subtitle={`${procedure.title} — as-run on ${run.key}`}
+      subtitle={`${procedure.title} · ${run.key}`}
     >
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <Badge

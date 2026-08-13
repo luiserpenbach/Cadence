@@ -25,7 +25,7 @@ export default async function TracePage({
           <input
             name="q"
             defaultValue={query}
-            placeholder="TP-017, SN-V-017B, LOT-O85…"
+            placeholder="Serial, lot, or article"
             className={`mt-1 font-mono ${inputClass}`}
           />
         </label>
@@ -36,18 +36,11 @@ export default async function TracePage({
           Trace
         </button>
       </form>
-      <p className="mt-2 text-xs text-[var(--muted)]">
-        Scan a QR label or type any identifier — article serial, installed
-        part serial/lot, or inventory lot code.
-      </p>
     </Panel>
   );
 
   return (
-    <AppShell
-      title="Trace"
-      subtitle="Serial ↔ config ↔ build ↔ test ↔ supplier — one identifier in, full genealogy out."
-    >
+    <AppShell title="Trace">
       <div className="mb-5">{searchBox}</div>
 
       {result === null ? null : result.kind === "none" ? (
@@ -62,9 +55,9 @@ export default async function TracePage({
         <>
           <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="font-display text-2xl">
+              <div className="font-mono text-lg tracking-tight">
                 {result.article.serial} — {result.article.name}
-              </h2>
+              </div>
               <div className="mt-2 flex gap-2">
                 <Badge tone="neutral">{result.article.status}</Badge>
                 <Link
@@ -177,9 +170,9 @@ export default async function TracePage({
       ) : (
         <>
           <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-            <h2 className="font-display text-2xl">
-              <span className="font-mono">{result.identifier}</span>
-            </h2>
+            <div className="font-mono text-lg tracking-tight">
+              {result.identifier}
+            </div>
             <QrLabel identifier={result.identifier} />
           </div>
 

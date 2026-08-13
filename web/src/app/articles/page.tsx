@@ -25,10 +25,7 @@ export default function ArticlesPage() {
   );
 
   return (
-    <AppShell
-      title="Articles"
-      subtitle="Named proto units. Effectivity targets serials like TP-017+; genealogy stays on the article."
-    >
+    <AppShell title="Articles">
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <DataTable

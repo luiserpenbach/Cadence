@@ -30,14 +30,10 @@ export default function ProceduresPage() {
   }
 
   return (
-    <AppShell
-      title="Procedures & tests"
-      subtitle="Versioned instructions and the test vocabulary configs pin. Editing a procedure releases a new version; released configs keep the text they shipped with."
-    >
+    <AppShell title="Procedures">
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display">Procedures</h2>
-          <div className="mt-3 space-y-6">
+          <div className="space-y-6">
             {[...byKey.entries()].map(([key, versions]) => {
               const latest = versions[versions.length - 1];
               return (

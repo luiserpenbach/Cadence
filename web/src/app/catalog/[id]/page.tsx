@@ -120,7 +120,7 @@ export default async function PartDetailPage({
               </li>
             ))}
             {usage.length === 0 ? (
-              <li className="text-[var(--muted)]">Not pinned by any config.</li>
+              <li className="text-[var(--muted)]">Not used in any config.</li>
             ) : null}
           </ul>
         </Panel>
@@ -133,9 +133,6 @@ export default async function PartDetailPage({
 
           <Panel>
             <h2 className="font-display">Attachments</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Drawings, datasheets, certs — attachments, not truth.
-            </p>
             <div className="mt-2">
               <AttachmentsPanel entityType="part" entityId={part.id} />
             </div>

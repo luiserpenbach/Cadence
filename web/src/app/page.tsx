@@ -24,32 +24,26 @@ export default function HomePage() {
 
   if (parts.length === 0 && configs.length === 0) {
     return (
-      <AppShell
-        title="Empty database"
-        subtitle="Author the product from scratch, or load the cryo demo dataset."
-      >
+      <AppShell title="Overview">
         <Panel>
           <ol className="space-y-2 text-sm text-[var(--muted)]">
             <li>
-              1. Author parts in the{" "}
+              1. Add parts in the{" "}
               <Link className="underline" href="/catalog">
                 Catalog
               </Link>
-              , articles, and stands
             </li>
             <li>
-              2. Create a config on{" "}
+              2. Create and release a config on{" "}
               <Link className="underline" href="/configs">
                 Configs
-              </Link>{" "}
-              — pin BoM, tests, procedures, effectivity — and release it
+              </Link>
             </li>
             <li>
               3. Bind a run on{" "}
               <Link className="underline" href="/runs">
                 Runs
-              </Link>{" "}
-              — the resolver picks the configs
+              </Link>
             </li>
           </ol>
           <p className="mt-4 text-sm text-[var(--muted)]">
@@ -64,10 +58,7 @@ export default function HomePage() {
   }
 
   return (
-    <AppShell
-      title="Overview"
-      subtitle="Released configs, bench binding, and cage stock for the cryo proto program."
-    >
+    <AppShell title="Overview">
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -88,12 +79,12 @@ export default function HomePage() {
               <Stat
                 label="BoM deltas"
                 value={String(impact.bomDeltas.length)}
-                hint="pins changed"
+                hint="changed"
               />
               <Stat
                 label="Inventory gaps"
                 value={String(impact.inventoryShortages.length)}
-                hint="short pins"
+                hint="short"
               />
               <Stat
                 label="Articles on prior"
@@ -103,7 +94,7 @@ export default function HomePage() {
             </div>
           ) : (
             <p className="mt-4 text-sm text-[var(--muted)]">
-              Release a config cut from another to see its blast radius here.
+              Release a config cut from another to see the delta here.
             </p>
           )}
           <div className="mt-4 flex flex-wrap gap-2">

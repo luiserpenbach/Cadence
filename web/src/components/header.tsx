@@ -85,9 +85,6 @@ export function AppHeader() {
             </div>
           ))}
         </nav>
-        <div className="hidden shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--muted)] sm:block">
-          cryo · proto
-        </div>
       </div>
       <div className="h-px bg-[var(--line)]" />
     </header>

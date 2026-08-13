@@ -113,7 +113,7 @@ export default async function ConfigDetailPage({
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display">BoM pins</h2>
+          <h2 className="font-display">BoM</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             <a className="underline" href={`/configs/${config.id}/bom.csv`}>
               Export CSV
@@ -121,7 +121,7 @@ export default async function ConfigDetailPage({
           </p>
           <div className="mt-3">
             <DataTable
-              empty="No pins yet — add one or import CSV."
+              empty="No lines yet — add one or import CSV."
               headers={
                 isDraft
                   ? ["Find / Part", "Name", "Rev / Qty / Notes", ""]
@@ -280,11 +280,11 @@ export default async function ConfigDetailPage({
           {config.status === "draft" ? (
             <Panel>
               <h2 className="font-display">Release</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                {config.riskClass === "R3"
-                  ? "R3: a second person must approve — request first."
-                  : "Soft gate — tests may still be draft."}
-              </p>
+              {config.riskClass === "R3" ? (
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  R3 requires a second-person approval.
+                </p>
+              ) : null}
               {config.riskClass === "R3" ? (
                 <RequestReleaseForm configId={config.id} />
               ) : (
@@ -403,10 +403,6 @@ export default async function ConfigDetailPage({
 
       <Panel className="mt-5">
         <h2 className="font-display">Attachments</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Reference material for this config — release evidence, reports,
-          drawings. Attachments are metadata, not pins.
-        </p>
         <div className="mt-2">
           <AttachmentsPanel entityType="configuration" entityId={config.id} />
         </div>

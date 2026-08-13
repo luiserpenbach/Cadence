@@ -71,7 +71,7 @@ export default async function RunDetailPage({
   const procedureStatus = listRunProcedureStatus(db, run.id);
 
   return (
-    <AppShell title={run.key} subtitle={`Bound run on ${article.serial} @ ${stand.key}`}>
+    <AppShell title={run.key} subtitle={`${article.serial} @ ${stand.key}`}>
       {articleConfig.status === "superseded" ||
       standConfig.status === "superseded" ? (
         <div className="alert alert-warn mb-5">
@@ -159,9 +159,6 @@ export default async function RunDetailPage({
           </dl>
 
           <h2 className="mt-6 font-display">Verification gaps</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Record-and-warn: you can proceed after acknowledging gaps.
-          </p>
           <ul className="mt-3 space-y-2">
             {verification.gaps.map((g) => (
               <li
@@ -225,10 +222,6 @@ export default async function RunDetailPage({
 
           <Panel>
             <h2 className="font-display">Waive test</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Waivers are explicit objects — who, why, which test. Never a
-              silent green.
-            </p>
             {waivable.length === 0 ? (
               <p className="mt-2 text-sm text-[var(--muted)]">
                 No open gaps to waive.
@@ -247,11 +240,7 @@ export default async function RunDetailPage({
       </div>
 
       <Panel className="mt-5">
-        <h2 className="font-display">Procedures (as-run)</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Procedures execute step by step against this run — each step is a
-          signed record, not a checkbox on a PDF.
-        </p>
+        <h2 className="font-display">Procedures</h2>
         <ul className="mt-3 space-y-2">
           {procedureStatus.map((p) => (
             <li

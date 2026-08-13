@@ -16,8 +16,7 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "cadence",
-  description:
-    "Hardware configuration control for cryogenic propulsion and thermal management",
+  description: "Hardware configuration control",
 };
 
 export default function RootLayout({

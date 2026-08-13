@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
@@ -34,7 +33,7 @@ export default async function FloorPage({
     <Panel>
       <form method="get" className="flex flex-wrap items-end gap-2">
         <label className="block text-sm">
-          Article on the bench
+          Article
           <select
             name="article"
             defaultValue={articleId}
@@ -65,7 +64,7 @@ export default async function FloorPage({
           type="submit"
           className={buttonClass}
         >
-          Show recipe
+          Show
         </button>
       </form>
     </Panel>
@@ -73,10 +72,7 @@ export default async function FloorPage({
 
   if (!view) {
     return (
-      <AppShell
-        title="Floor"
-        subtitle="Pick the article on your bench — Cadence shows the current recipe."
-      >
+      <AppShell title="Floor">
         {articles.length === 0 ? (
           <Panel>No articles yet.</Panel>
         ) : (
@@ -113,16 +109,15 @@ export default async function FloorPage({
     if (r.outcome === "none") {
       return (
         <p className="alert alert-warn">
-          No released {kind} config covers this bench. Do not build or test —
-          ask the responsible engineer to release one.
+          No released {kind} config covers this.
         </p>
       );
     }
     if (r.outcome === "conflict") {
       return (
         <p className="alert alert-danger">
-          Config conflict: {r.candidates.map((c) => c.key).join(" vs ")}. A
-          designer must fix effectivity before this bench can run.
+          Config conflict: {r.candidates.map((c) => c.key).join(" vs ")}.
+          Fix effectivity before running.
         </p>
       );
     }
@@ -130,10 +125,7 @@ export default async function FloorPage({
   };
 
   return (
-    <AppShell
-      title={`${view.article.serial} @ ${view.stand.key}`}
-      subtitle="Current recipe for this bench — resolved live from released configs."
-    >
+    <AppShell title={`${view.article.serial} @ ${view.stand.key}`}>
       <div className="mb-5">{picker}</div>
 
       {view.changedSinceLastRun && view.lastRunArticleConfig && resolvedArticleConfig ? (
@@ -257,25 +249,11 @@ export default async function FloorPage({
                 )),
             )}
             <Panel>
-              <h2 className="font-display">Kit this recipe</h2>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                Reserve lots against {resolvedArticleConfig.key} for{" "}
-                {view.article.serial}, then issue to stamp as-built.
-              </p>
+              <h2 className="font-display">Kit</h2>
               <CreateKitForm
                 articleId={view.article.id}
                 configId={resolvedArticleConfig.id}
               />
-            </Panel>
-            <Panel>
-              <h2 className="font-display">Next step</h2>
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                Ready to run? Bind it on the{" "}
-                <Link className="underline" href="/runs">
-                  Runs
-                </Link>{" "}
-                page — the same resolution shown here is applied automatically.
-              </p>
             </Panel>
           </div>
         </div>
@@ -284,7 +262,7 @@ export default async function FloorPage({
       {standBundle && resolvedStandConfig ? (
         <Panel className="mt-5">
           <h2 className="font-display">
-            Stand recipe: {resolvedStandConfig.key}
+            Stand: {resolvedStandConfig.key}
           </h2>
           <div className="mt-3">
             <DataTable

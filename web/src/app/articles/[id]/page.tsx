@@ -73,7 +73,7 @@ export default async function ArticleDetailPage({
   const asBuiltOptions = [
     ...designedPins.map((p) => ({
       id: p.partRevisionId,
-      label: `pin ${p.findNumber} · ${p.partNumber} @ ${p.revision}`,
+      label: `${p.findNumber} · ${p.partNumber} @ ${p.revision}`,
     })),
     ...partRevs
       .filter((p) => !pinRevIds.has(p.id))

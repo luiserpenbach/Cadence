@@ -29,19 +29,16 @@ export default function KitsPage() {
   }
 
   return (
-    <AppShell
-      title="Kits"
-      subtitle="Reserve lots against a released config, then issue to stamp as-built."
-    >
+    <AppShell title="Kits">
       <Panel>
         <DataTable
           empty={
             <>
-              No kits yet — pull one from the{" "}
+              No kits yet — create one from the{" "}
               <Link className="underline" href="/floor">
                 Floor
-              </Link>{" "}
-              recipe.
+              </Link>
+              .
             </>
           }
           headers={["Key", "Article", "Config", "Status", "Allocated", ""]}

@@ -69,13 +69,10 @@ export default async function ChangePage({
 
   if (!impact) {
     return (
-      <AppShell
-        title="Change impact"
-        subtitle="Pick two configs to see the delta and blast radius."
-      >
+      <AppShell title="Change">
         {configs.length === 0 ? (
           <Panel>
-            No configs yet — author one on the{" "}
+            No configs yet — create one on the{" "}
             <Link className="underline" href="/configs">
               Configs
             </Link>{" "}
@@ -92,8 +89,8 @@ export default async function ChangePage({
 
   return (
     <AppShell
-      title="Change impact"
-      subtitle={`${from.key} → ${to.key} — blast radius for the overnight cut-in.`}
+      title="Change"
+      subtitle={`${from.key} → ${to.key}`}
     >
       <div className="mb-5">{picker}</div>
 
@@ -203,12 +200,6 @@ export default async function ChangePage({
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <Panel>
           <h2 className="font-display">Inventory shortages</h2>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Demand is {impact.kitCount} kit{impact.kitCount === 1 ? "" : "s"} of{" "}
-            {to.key} (articles covered by the new config, minimum 1). Available
-            is on-hand minus kit reservations; inbound POs count toward covering
-            the gap.
-          </p>
           {impact.inventoryShortages.length === 0 ? (
             <p className="mt-2 text-sm text-[var(--muted)]">
               Enough on hand (plus inbound POs) for {impact.kitCount} kit

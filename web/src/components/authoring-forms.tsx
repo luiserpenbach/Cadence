@@ -51,7 +51,7 @@ export function NewPartForm() {
       <input
         name="partNumber"
         required
-        placeholder="Part number (VLV-CRYO-075)"
+        placeholder="Part number"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -260,7 +260,7 @@ export function NewArticleForm() {
       <input
         name="serial"
         required
-        placeholder="Serial (TP-019)"
+        placeholder="Serial"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -282,7 +282,7 @@ export function NewStandForm() {
       <input
         name="key"
         required
-        placeholder="Key (COLD-FLOW-2)"
+        placeholder="Key"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -305,7 +305,7 @@ export function NewConfigForm() {
       <input
         name="key"
         required
-        placeholder="Key (LN2-COOL-1)"
+        placeholder="Key"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -390,7 +390,7 @@ export function NewProcedureForm() {
       <input
         name="key"
         required
-        placeholder="Key (PROC-PURGE-1)"
+        placeholder="Key"
         className={`font-mono ${inputClass}`}
       />
       <input name="title" required placeholder="Title" className={inputClass} />
@@ -452,7 +452,7 @@ export function NewTestDefForm() {
       <input
         name="key"
         required
-        placeholder="Key (TST-LEAK-N2)"
+        placeholder="Key"
         className={`font-mono ${inputClass}`}
       />
       <input name="name" required placeholder="Name" className={inputClass} />
@@ -692,7 +692,7 @@ export function AddBomLineForm({
         />
         <input name="notes" placeholder="Notes" className={inputClass} />
         <button type="submit" disabled={pending} className={subtleButtonClass}>
-          Add pin
+          Add line
         </button>
       </div>
       <ActionError state={state} />
@@ -782,7 +782,7 @@ export function AddEffectivityForm({
         <div className="flex gap-2">
           <input
             name="serialFrom"
-            placeholder="From (TP-014)"
+            placeholder="From"
             className={`font-mono ${inputClass}`}
           />
           <input

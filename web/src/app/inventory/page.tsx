@@ -88,10 +88,7 @@ export default async function InventoryPage({
     .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
 
   return (
-    <AppShell
-      title="Inventory"
-      subtitle="Proto-cage stock that moves — receive, reserve, issue, and adjust lots."
-    >
+    <AppShell title="Inventory">
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <form method="get" className="mb-4 flex gap-2">

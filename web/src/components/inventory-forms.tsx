@@ -55,7 +55,7 @@ export function CreateLotForm({ partRevs }: { partRevs: PartRev[] }) {
         <input name="lotCode" required placeholder="Lot code" className={`font-mono ${inputClass}`} />
         <input name="qty" type="number" step="any" min="0" defaultValue="1" className={`w-24 ${inputClass}`} />
       </div>
-      <input name="location" defaultValue="PROTO-CAGE" className={inputClass} />
+      <input name="location" placeholder="Location" className={inputClass} />
       <div className="flex gap-2">
         <input name="by" defaultValue="m.chen" className={`w-32 ${inputClass}`} />
         <input name="reason" placeholder="Reason (optional)" className={inputClass} />
@@ -111,7 +111,7 @@ export function CreatePoForm() {
   useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
-      <input name="poNumber" required placeholder="PO-2026-0143" className={`font-mono ${inputClass}`} />
+      <input name="poNumber" required placeholder="PO number" className={`font-mono ${inputClass}`} />
       <input name="supplier" required placeholder="Supplier" className={inputClass} />
       <input name="notes" placeholder="Notes" className={inputClass} />
       <ActionError state={state} />
@@ -168,7 +168,7 @@ export function PoStatusButtons({ poId, status }: { poId: string; status: string
         <form action={recvAction} className="flex flex-wrap items-end gap-2">
           <input type="hidden" name="poId" value={poId} />
           <input name="by" defaultValue="m.chen" className={`w-32 ${inputClass}`} />
-          <input name="location" defaultValue="PROTO-CAGE" className={`w-40 ${inputClass}`} />
+          <input name="location" placeholder="Location" className={`w-40 ${inputClass}`} />
           <button type="submit" disabled={recvPending} className={buttonClass}>
             Receive into stock
           </button>
@@ -216,7 +216,7 @@ export function CreateKitForm({
       <input name="notes" placeholder="Notes (optional)" className={inputClass} />
       <ActionError state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
-        Kit this recipe
+        Kit
       </button>
     </form>
   );
@@ -382,7 +382,7 @@ export function ImportBomForm({ configId }: { configId: string }) {
       <input type="hidden" name="configId" value={configId} />
       <textarea
         name="csv"
-        placeholder={"find,part,rev,qty,notes\n10,VLV-CRYO-050,B,1,"}
+        placeholder={"find,part,rev,qty,notes\n10,PN-100,A,1,"}
         className={`min-h-24 font-mono text-xs ${inputClass}`}
       />
       <input type="file" name="file" accept=".csv,text/csv" className="block w-full text-sm" />

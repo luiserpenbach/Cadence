@@ -501,7 +501,7 @@ export function CutConfigForm({
         <input
           name="key"
           required
-          placeholder="CH4-FEED-N+2"
+          placeholder="Key"
           className={`mt-1 font-mono ${inputClass}`}
         />
       </label>
@@ -510,7 +510,7 @@ export function CutConfigForm({
         <input
           name="name"
           required
-          placeholder="Next overnight cut"
+          placeholder="Name"
           className={`mt-1 ${inputClass}`}
         />
       </label>

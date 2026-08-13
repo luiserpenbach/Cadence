@@ -54,10 +54,7 @@ export default async function CatalogPage({
     );
 
   return (
-    <AppShell
-      title="Catalog"
-      subtitle="Parts and revisions. Rev only when the artifact changes — configs absorb system recipe churn."
-    >
+    <AppShell title="Catalog">
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <form method="get" className="mb-4 flex gap-2">
@@ -123,9 +120,6 @@ export default async function CatalogPage({
           </Panel>
           <Panel>
             <h2 className="font-display">New revision</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Only when the artifact changes (drawing, material, interface).
-            </p>
             <NewRevisionForm
               parts={parts
                 .slice()
@@ -135,11 +129,6 @@ export default async function CatalogPage({
           </Panel>
           <Panel>
             <h2 className="font-display">Cut in a revision</h2>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              One shot: drafts every released config pinning an older rev of
-              this part, with the pin swapped. Review effectivity, then
-              release.
-            </p>
             <CutInRevisionForm
               partRevs={partRevOptions.map((p) => ({
                 id: p.id,
