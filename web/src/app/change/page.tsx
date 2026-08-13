@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass, linkClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -193,7 +193,7 @@ export default async function ChangePage({
           </div>
           <Link
             href={`/configs/${to.id}`}
-            className="mt-4 inline-block text-[11px] font-medium uppercase tracking-[0.08em] underline underline-offset-2"
+            className={`mt-4 inline-block ${linkClass}`}
           >
             Open {to.key}
           </Link>

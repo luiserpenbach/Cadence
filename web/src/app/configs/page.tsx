@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, linkClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -55,7 +55,7 @@ export default function ConfigsPage() {
               <Link
                 key="o"
                 href={`/configs/${c.id}`}
-                className="text-[11px] font-medium uppercase tracking-[0.08em] underline underline-offset-2"
+                className={linkClass}
               >
                 Open
               </Link>,

@@ -27,17 +27,36 @@
   --font-display: var(--font-body);
 }
 
-html {
-  background: var(--background);
-}
+@layer base {
+  html {
+    background: var(--background);
+  }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.45;
-  font-feature-settings: "ss01" 0, "kern" 1, "tnum" 1;
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    font-feature-settings: "ss01" 0, "kern" 1, "tnum" 1;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    border-radius: 0;
+  }
+
+  input[type="search"]::-webkit-search-cancel-button {
+    appearance: none;
+  }
 }
 
 ::selection {
@@ -56,8 +75,8 @@ body {
 }
 
 h1.font-display {
-  font-size: 1.125rem;
-  letter-spacing: -0.03em;
+  font-size: 1.0625rem;
+  letter-spacing: -0.025em;
   font-weight: 600;
 }
 
@@ -72,27 +91,10 @@ h2.font-display {
 .font-logo {
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   line-height: 1;
-  letter-spacing: -0.06em;
+  letter-spacing: -0.04em;
   text-transform: lowercase;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-input,
-select,
-textarea,
-button {
-  font: inherit;
-  border-radius: 0;
-}
-
-input[type="search"]::-webkit-search-cancel-button {
-  appearance: none;
 }
 
 .alert {

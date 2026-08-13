@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, linkClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -69,7 +69,7 @@ export default function KitsPage() {
                 {k.status}
               </Badge>,
               `${allocated}/${kitLines.length}`,
-              <Link key="o" className="text-[11px] font-medium uppercase tracking-[0.08em] underline underline-offset-2" href={`/kits/${k.id}`}>
+              <Link key="o" className={linkClass} href={`/kits/${k.id}`}>
                 Open
               </Link>,
             ];

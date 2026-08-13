@@ -5,9 +5,9 @@ export const inputClass =
 export const compactInputClass =
   "rounded-none border border-[var(--line)] bg-[var(--control)] px-2 py-1 text-xs outline-none focus:border-[var(--ink)]";
 export const buttonClass =
-  "rounded-none bg-[var(--ink)] px-3 py-1.5 text-sm font-medium text-[var(--bg0)] disabled:opacity-50";
+  "inline-flex items-center justify-center rounded-none bg-[var(--ink)] px-3 py-1.5 text-sm font-medium text-[var(--bg0)] disabled:opacity-50";
 export const subtleButtonClass =
-  "rounded-none border border-[var(--line)] bg-transparent px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-[var(--panel-strong)]";
+  "inline-flex items-center justify-center rounded-none border border-[var(--line)] bg-transparent px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-[var(--panel-strong)]";
 export const linkClass =
   "text-[11px] font-medium uppercase tracking-[0.08em] underline underline-offset-2 decoration-[var(--line)] hover:decoration-[var(--ink)]";
 

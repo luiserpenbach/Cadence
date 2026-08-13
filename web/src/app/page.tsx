@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell, Badge, Panel, buttonClass, linkClass, subtleButtonClass } from "../components/ui";
+import { AppShell, Badge, Panel, buttonClass, subtleButtonClass } from "../components/ui";
 import { ensureAppData } from "../lib/bootstrap";
 import { getDb } from "../db";
 import * as s from "../db/schema";
@@ -207,7 +207,6 @@ function MiniStat({
         {label}
       </div>
       <div className="mt-1 font-mono text-2xl tabular-nums tracking-tight">{value}</div>
-      <span className={`${linkClass} mt-1 inline-block`}>Open</span>
     </Link>
   );
 }
