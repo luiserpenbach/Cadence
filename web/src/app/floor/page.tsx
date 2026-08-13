@@ -1,4 +1,4 @@
-import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -6,7 +6,10 @@ import { getFloorView } from "../../lib/domain/floor";
 import { diffBom } from "../../lib/impact";
 import { getConfigBundle } from "../../lib/queries";
 import { stockByRevision } from "../../lib/domain/inventory";
-import { CreateKitForm } from "../../components/inventory-forms";
+import { findActiveKit } from "../../lib/domain/kits";
+import { CreateKitForm, ShortagePoForm, ShortageWoForm } from "../../components/inventory-forms";
+import { FloorPicker } from "../../components/pickers";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -31,42 +34,16 @@ export default async function FloorPage({
 
   const picker = (
     <Panel>
-      <form method="get" className="flex flex-wrap items-end gap-2">
-        <label className="block text-sm">
-          Article
-          <select
-            name="article"
-            defaultValue={articleId}
-            className={`mt-1 block ${inputClass}`}
-          >
-            {articles.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.serial} — {a.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm">
-          Stand
-          <select
-            name="stand"
-            defaultValue={standId}
-            className={`mt-1 block ${inputClass}`}
-          >
-            {stands.map((st) => (
-              <option key={st.id} value={st.id}>
-                {st.key}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="submit"
-          className={buttonClass}
-        >
-          Show
-        </button>
-      </form>
+      <FloorPicker
+        articles={articles.map((a) => ({
+          id: a.id,
+          serial: a.serial,
+          name: a.name,
+        }))}
+        stands={stands.map((st) => ({ id: st.id, key: st.key }))}
+        articleId={articleId}
+        standId={standId}
+      />
     </Panel>
   );
 
@@ -96,6 +73,16 @@ export default async function FloorPage({
     ? getConfigBundle(resolvedStandConfig.id)
     : null;
   const stock = stockByRevision(db);
+  const activeKit = resolvedArticleConfig
+    ? findActiveKit(db, view.article.id, resolvedArticleConfig.id)
+    : undefined;
+  const floorShorts =
+    articleBundle && resolvedArticleConfig
+      ? [...articleBundle.bom].filter((l) => {
+          const avail = stock.get(l.partRevisionId)?.available ?? 0;
+          return avail < l.qty;
+        })
+      : [];
 
   const changeDelta =
     view.changedSinceLastRun && resolvedArticleConfig && view.lastRun
@@ -205,7 +192,7 @@ export default async function FloorPage({
             </h2>
             <div className="mt-3">
               <DataTable
-                headers={["Find", "Part", "Rev", "Qty", "Avail", "Name"]}
+                headers={["Find", "Part", "Rev", "Src", "Qty", "Avail", "Name"]}
                 rows={[...articleBundle.bom]
                   .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
                   .map((l) => {
@@ -219,6 +206,7 @@ export default async function FloorPage({
                         {l.partNumber}
                       </span>,
                       l.revision,
+                      l.sourcing,
                       String(l.qty),
                       <span
                         key="a"
@@ -250,11 +238,32 @@ export default async function FloorPage({
             )}
             <Panel>
               <h2 className="font-display">Kit</h2>
-              <CreateKitForm
-                articleId={view.article.id}
-                configId={resolvedArticleConfig.id}
-              />
+              {activeKit ? (
+                <p className="mt-3 text-sm">
+                  Kit already exists for this article + config:{" "}
+                  <Link className="font-mono underline" href={`/kits/${activeKit.id}`}>
+                    {activeKit.key}
+                  </Link>
+                  <span className="text-[var(--muted)]"> · {activeKit.status}</span>
+                </p>
+              ) : (
+                <CreateKitForm
+                  articleId={view.article.id}
+                  configId={resolvedArticleConfig.id}
+                />
+              )}
             </Panel>
+            {floorShorts.length > 0 ? (
+              <Panel>
+                <h2 className="font-display">Shortages</h2>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  Buy/cots → PO. Make → work order. Completing a WO puts a lot in
+                  the cage.
+                </p>
+                <ShortagePoForm configId={resolvedArticleConfig.id} />
+                <ShortageWoForm configId={resolvedArticleConfig.id} />
+              </Panel>
+            ) : null}
           </div>
         </div>
       ) : null}

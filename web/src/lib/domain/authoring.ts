@@ -166,7 +166,14 @@ export function createStand(
 
 export function createConfig(
   db: Db,
-  input: { key: string; name: string; kind: string; riskClass: string },
+  input: {
+    key: string;
+    name: string;
+    kind: string;
+    riskClass: string;
+    program?: string;
+    envelope?: string;
+  },
 ): AuthoringResult<{ configId: string }> {
   const duplicate = db
     .select({ id: s.configurations.id })
@@ -186,6 +193,8 @@ export function createConfig(
       kind: input.kind,
       status: "draft",
       riskClass: input.riskClass,
+      program: input.program?.trim() ?? "",
+      envelope: input.envelope?.trim() ?? "",
     })
     .run();
   return { ok: true, configId };

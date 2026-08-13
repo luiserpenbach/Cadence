@@ -21,10 +21,27 @@ function uniqueKitKey(db: Db, articleSerial: string, configKey: string): string 
   return candidate;
 }
 
+export function findActiveKit(
+  db: Db,
+  articleId: string,
+  configId: string,
+): typeof s.kits.$inferSelect | undefined {
+  return db
+    .select()
+    .from(s.kits)
+    .all()
+    .find(
+      (k) =>
+        k.articleId === articleId &&
+        k.configId === configId &&
+        k.status !== "cancelled",
+    );
+}
+
 export function createKit(
   db: Db,
   input: { articleId: string; configId: string; by: string; notes?: string },
-): KitResult<{ kitId: string; key: string }> {
+): KitResult<{ kitId: string; key: string; existing?: boolean }> {
   const article = db
     .select()
     .from(s.articles)
@@ -39,6 +56,11 @@ export function createKit(
   if (!config) return { ok: false, error: "Configuration not found." };
   if (config.status !== "released") {
     return { ok: false, error: "Kits can only be pulled from a released config." };
+  }
+
+  const existing = findActiveKit(db, article.id, config.id);
+  if (existing) {
+    return { ok: true, kitId: existing.id, key: existing.key, existing: true };
   }
 
   const bom = getConfigBom(config.id);

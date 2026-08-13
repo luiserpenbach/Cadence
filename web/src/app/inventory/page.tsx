@@ -5,7 +5,7 @@ import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
 import { availableQty } from "../../lib/domain/inventory";
-import { AdjustLotForm, CreateLotForm } from "../../components/inventory-forms";
+import { AdjustLotForm, CancelWorkOrderForm, CompleteWorkOrderForm, CreateLotForm, CreateWorkOrderForm } from "../../components/inventory-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -81,11 +81,15 @@ export default async function InventoryPage({
       id: s.partRevisions.id,
       partNumber: s.parts.partNumber,
       revision: s.partRevisions.revision,
+      sourcing: s.parts.sourcing,
     })
     .from(s.partRevisions)
     .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
     .all()
     .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+
+  const workOrders = db.select().from(s.workOrders).all();
+  const revById = Object.fromEntries(partRevs.map((p) => [p.id, p]));
 
   return (
     <AppShell title="Inventory">
@@ -154,8 +158,64 @@ export default async function InventoryPage({
               }))}
             />
           </Panel>
+          <Panel>
+            <h2 className="font-display">Work order</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Make parts only. Completing a WO receives a lot.
+            </p>
+            <CreateWorkOrderForm
+              partRevs={partRevs
+                .filter((p) => p.sourcing === "make")
+                .map((p) => ({
+                  id: p.id,
+                  label: `${p.partNumber} @ ${p.revision}`,
+                }))}
+            />
+          </Panel>
         </div>
       </div>
+
+      {workOrders.length > 0 ? (
+        <Panel className="mt-5">
+          <h2 className="font-display">Work orders</h2>
+          <div className="mt-3">
+            <DataTable
+              compact
+              headers={["WO", "Part", "Qty", "Status", ""]}
+              rows={workOrders.map((wo) => {
+                const rev = revById[wo.partRevisionId];
+                return [
+                  <span key="k" className="font-mono text-xs">
+                    {wo.key}
+                  </span>,
+                  rev ? `${rev.partNumber} @ ${rev.revision}` : wo.partRevisionId,
+                  String(wo.qty),
+                  <Badge
+                    key="s"
+                    tone={
+                      wo.status === "complete"
+                        ? "ok"
+                        : wo.status === "cancelled"
+                          ? "neutral"
+                          : "warn"
+                    }
+                  >
+                    {wo.status}
+                  </Badge>,
+                  wo.status === "open" || wo.status === "in_progress" ? (
+                    <span key="a" className="flex flex-wrap gap-2">
+                      <CompleteWorkOrderForm workOrderId={wo.id} />
+                      <CancelWorkOrderForm workOrderId={wo.id} />
+                    </span>
+                  ) : (
+                    "—"
+                  ),
+                ];
+              })}
+            />
+          </div>
+        </Panel>
+      ) : null}
 
       <Panel className="mt-5">
         <h2 className="font-display">Recent movements</h2>

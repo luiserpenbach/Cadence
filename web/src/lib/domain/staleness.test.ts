@@ -63,7 +63,11 @@ describe("supersede + staleness on release", () => {
   }
 
   it("marks the base config superseded when the cut config releases (G5)", () => {
-    const result = releaseConfiguration(db, { configId: nextId, by: "m.chen" });
+    const result = releaseConfiguration(db, {
+      configId: nextId,
+      by: "m.chen",
+      supersedeBase: true,
+    });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.supersededKey).toBe("CFG-N");
@@ -80,7 +84,11 @@ describe("supersede + staleness on release", () => {
     const runId = makeBoundRun("TP-001");
     passResult(runId, sharedTest);
 
-    const result = releaseConfiguration(db, { configId: nextId, by: "m.chen" });
+    const result = releaseConfiguration(db, {
+      configId: nextId,
+      by: "m.chen",
+      supersedeBase: true,
+    });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.staleCount).toBe(1);

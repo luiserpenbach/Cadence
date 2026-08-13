@@ -10,13 +10,25 @@ export type ProcResult<T = object> =
   | ({ ok: true } & T)
   | { ok: false; error: string };
 
+export function nextPoNumber(db: Db): string {
+  const rows = db
+    .select({ poNumber: s.purchaseOrders.poNumber })
+    .from(s.purchaseOrders)
+    .all();
+  let max = 0;
+  for (const row of rows) {
+    const m = /^PO-(\d+)$/.exec(row.poNumber);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `PO-${String(max + 1).padStart(3, "0")}`;
+}
+
 export function createPurchaseOrder(
   db: Db,
-  input: { poNumber: string; supplier: string; notes: string },
-): ProcResult<{ poId: string }> {
-  const poNumber = input.poNumber.trim();
+  input: { poNumber?: string; supplier: string; notes: string },
+): ProcResult<{ poId: string; poNumber: string }> {
+  const poNumber = input.poNumber?.trim() || nextPoNumber(db);
   const supplier = input.supplier.trim();
-  if (!poNumber) return { ok: false, error: "PO number is required." };
   if (!supplier) return { ok: false, error: "Supplier is required." };
 
   const duplicate = db
@@ -38,7 +50,7 @@ export function createPurchaseOrder(
       notes: input.notes.trim(),
     })
     .run();
-  return { ok: true, poId };
+  return { ok: true, poId, poNumber };
 }
 
 export function addPurchaseOrderLine(
@@ -60,6 +72,10 @@ export function addPurchaseOrderLine(
     .where(eq(s.partRevisions.id, input.partRevisionId))
     .get();
   if (!rev) return { ok: false, error: "Part revision not found." };
+  const part = db.select().from(s.parts).where(eq(s.parts.id, rev.partId)).get();
+  if (part?.sourcing === "make") {
+    return { ok: false, error: "Make parts go on a work order, not a PO." };
+  }
   if (input.qty <= 0) return { ok: false, error: "Quantity must be positive." };
   if (input.unitCost < 0) return { ok: false, error: "Unit cost cannot be negative." };
 
@@ -105,7 +121,13 @@ export function markPurchaseOrderOrdered(
 
 export function receivePurchaseOrder(
   db: Db,
-  input: { poId: string; by: string; location?: string },
+  input: {
+    poId: string;
+    by: string;
+    location?: string;
+    certUrl?: string;
+    certNotes?: string;
+  },
 ): ProcResult {
   const po = db
     .select()
@@ -125,7 +147,7 @@ export function receivePurchaseOrder(
     return { ok: false, error: "PO has no lines to receive." };
   }
 
-  const location = input.location?.trim() || "PROTO-CAGE";
+  const location = input.location?.trim() || "CAGE";
   const now = new Date().toISOString();
 
   db.transaction((tx) => {
@@ -175,6 +197,8 @@ export function receivePurchaseOrder(
         status: "received",
         receivedAt: now,
         receivedBy: input.by,
+        certUrl: input.certUrl?.trim() ?? po.certUrl,
+        certNotes: input.certNotes?.trim() ?? po.certNotes,
       })
       .where(eq(s.purchaseOrders.id, po.id))
       .run();
@@ -201,14 +225,17 @@ export function openPoForShortages(
   const articles = db.select().from(s.articles).all();
   const covered = articles.filter((a) => configCoversArticle(db, config.id, a));
   const kitCount = input.kitCount ?? Math.max(covered.length, 1);
-  const shorts = shortagesForConfig(config.id, kitCount).filter((row) => row.short > 0);
+  const shorts = shortagesForConfig(config.id, kitCount).filter(
+    (row) => row.short > 0 && row.sourcing !== "make",
+  );
   if (shorts.length === 0) {
-    return { ok: false, error: "No shortages to order for this config." };
+    return {
+      ok: false,
+      error: "No buy shortages — make parts need a work order, not a PO.",
+    };
   }
 
-  const poNumber = `PO-${config.key}-${Date.now().toString(36).toUpperCase()}`;
   const created = createPurchaseOrder(db, {
-    poNumber,
     supplier: input.supplier,
     notes: `Shortage buy for ${kitCount} kit(s) of ${config.key} (${input.by})`,
   });
@@ -226,7 +253,7 @@ export function openPoForShortages(
   return {
     ok: true,
     poId: created.poId,
-    poNumber,
+    poNumber: created.poNumber,
     lineCount: shorts.length,
   };
 }

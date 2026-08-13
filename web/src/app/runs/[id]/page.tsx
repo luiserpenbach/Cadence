@@ -215,6 +215,9 @@ export default async function RunDetailPage({
                 missing={missing.map((g) => ({
                   testDefinitionId: g.testDefinitionId,
                   key: g.key,
+                  unit: g.unit,
+                  limitMin: g.limitMin,
+                  limitMax: g.limitMax,
                 }))}
               />
             )}

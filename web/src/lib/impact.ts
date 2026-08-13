@@ -10,6 +10,7 @@ export type BomPin = {
   partNumber: string;
   revision: string;
   name: string;
+  sourcing: string;
   qty: number;
   findNumber: string;
   notes: string;
@@ -48,6 +49,7 @@ export function getConfigBom(configId: string): BomPin[] {
       revision: s.partRevisions.revision,
       partNumber: s.parts.partNumber,
       name: s.parts.name,
+      sourcing: s.parts.sourcing,
     })
     .from(s.configBomLines)
     .innerJoin(
@@ -63,6 +65,7 @@ export function getConfigBom(configId: string): BomPin[] {
     partNumber: r.partNumber,
     revision: r.revision,
     name: r.name,
+    sourcing: r.sourcing,
     qty: r.qty,
     findNumber: r.findNumber,
     notes: r.notes,
@@ -171,6 +174,7 @@ export type ShortageRow = {
   partRevisionId: string;
   partNumber: string;
   revision: string;
+  sourcing: string;
   needed: number;
   onHand: number;
   available: number;
@@ -197,6 +201,7 @@ export function shortagesForConfig(
       partRevisionId: line.partRevisionId,
       partNumber: line.partNumber,
       revision: line.revision,
+      sourcing: line.sourcing,
       needed,
       onHand,
       available,

@@ -157,4 +157,20 @@ describe("kits", () => {
       true,
     );
   });
+
+  it("returns the existing kit for the same article + released config", () => {
+    const articleId = makeArticle(db, "TP-017");
+    const revId = makePart(db, "VLV-001").revId;
+    const configId = releasedConfigWithPin(db, revId);
+    const first = createKit(db, { articleId, configId, by: "cage" });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    const again = createKit(db, { articleId, configId, by: "cage" });
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.existing).toBe(true);
+    expect(again.kitId).toBe(first.kitId);
+    expect(db.select().from(s.kits).all()).toHaveLength(1);
+    expect(db.select().from(s.asBuiltLines).all()).toHaveLength(0);
+  });
 });

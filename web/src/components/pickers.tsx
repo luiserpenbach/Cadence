@@ -67,3 +67,57 @@ export function PartRevPicker({
     </div>
   );
 }
+
+export function FloorPicker({
+  articles,
+  stands,
+  articleId,
+  standId,
+}: {
+  articles: Array<{ id: string; serial: string; name: string }>;
+  stands: Array<{ id: string; key: string }>;
+  articleId?: string;
+  standId?: string;
+}) {
+  const router = useRouter();
+  function go(next: { article?: string; stand?: string }) {
+    const a = next.article ?? articleId ?? "";
+    const st = next.stand ?? standId ?? "";
+    const q = new URLSearchParams();
+    if (a) q.set("article", a);
+    if (st) q.set("stand", st);
+    router.push(`/floor?${q.toString()}`);
+  }
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <label className="block text-sm">
+        Article
+        <select
+          value={articleId ?? ""}
+          onChange={(e) => go({ article: e.target.value })}
+          className={`mt-1 block ${inputClass}`}
+        >
+          {articles.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.serial} — {a.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block text-sm">
+        Stand
+        <select
+          value={standId ?? ""}
+          onChange={(e) => go({ stand: e.target.value })}
+          className={`mt-1 block ${inputClass}`}
+        >
+          {stands.map((st) => (
+            <option key={st.id} value={st.id}>
+              {st.key}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}

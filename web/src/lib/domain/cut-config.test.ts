@@ -9,6 +9,7 @@ import {
   makeArticle,
   makeConfig,
   makePart,
+  makeRevision,
   makeStand,
   makeTestDef,
   requireTest,
@@ -113,6 +114,64 @@ describe("cutConfiguration", () => {
         .all(),
     ).toHaveLength(1);
   });
+
+  it("swaps pins to the latest catalog rev when asked", () => {
+    const valve = db
+      .select()
+      .from(s.parts)
+      .all()
+      .find((p) => p.partNumber === "VLV-001")!;
+    const revB = makeRevision(db, valve.id, "B");
+    const result = cutConfiguration(db, {
+      basedOnId: baseId,
+      key: "CFG-N1",
+      name: "Next cut",
+      riskClass: "R2",
+      applyLatestRevs: true,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.swapped).toEqual([
+      expect.objectContaining({
+        partNumber: "VLV-001",
+        fromRev: "A",
+        toRev: "B",
+      }),
+    ]);
+    const bom = db
+      .select()
+      .from(s.configBomLines)
+      .where(eq(s.configBomLines.configId, result.configId))
+      .all();
+    expect(bom[0].partRevisionId).toBe(revB);
+    expect(result.configId);
+    const cfg = db
+      .select()
+      .from(s.configurations)
+      .where(eq(s.configurations.id, result.configId))
+      .get()!;
+    expect(cfg.notes).toContain("swapped");
+  });
+
+  it("says pins were already latest when nothing to swap", () => {
+    const result = cutConfiguration(db, {
+      basedOnId: baseId,
+      key: "CFG-N1",
+      name: "Next cut",
+      riskClass: "R2",
+      applyLatestRevs: true,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.swapped).toEqual([]);
+    const cfg = db
+      .select()
+      .from(s.configurations)
+      .where(eq(s.configurations.id, result.configId))
+      .get()!;
+    expect(cfg.notes).toContain("already at latest");
+  });
+});
 
   it("rejects a duplicate key without leaving orphan rows (B5)", () => {
     const result = cutConfiguration(db, {

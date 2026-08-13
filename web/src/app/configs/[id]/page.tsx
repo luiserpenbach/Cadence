@@ -15,6 +15,8 @@ import {
   AddLinkForm,
   BomLineEditor,
   ConfigEditButton,
+  CreateAndPinProcedureForm,
+  CreateAndPinTestForm,
 } from "../../../components/authoring-forms";
 import { ImportBomForm } from "../../../components/inventory-forms";
 import { AttachmentsPanel } from "../../../components/attachments-panel";
@@ -108,6 +110,12 @@ export default async function ConfigDetailPage({
               {basedOn.key}
             </Link>
           </span>
+        ) : null}
+        {config.program ? (
+          <Badge tone="accent">{config.program}</Badge>
+        ) : null}
+        {config.envelope ? (
+          <span className="text-sm text-[var(--muted)]">{config.envelope}</span>
         ) : null}
       </div>
 
@@ -229,7 +237,7 @@ export default async function ConfigDetailPage({
                   <div>
                     Articles:{" "}
                     {e.articleScope === "any"
-                      ? "any"
+                      ? "all serials"
                       : e.articleScope === "serial_range"
                         ? [
                             e.serialFrom ? `from ${e.serialFrom}` : null,
@@ -240,15 +248,15 @@ export default async function ConfigDetailPage({
                         : explicitArticles
                             .filter((a) => a.effectivityId === e.id)
                             .map((a) => a.serial)
-                            .join(", ") || "explicit list"}
+                            .join(", ") || "these serials"}
                   </div>
                   <div>
                     Stand:{" "}
                     {e.standScope === "any"
-                      ? "any"
+                      ? "any cell"
                       : e.standId
                         ? standById[e.standId]?.key
-                        : "—"}
+                        : "this cell"}
                   </div>
                   {isDraft ? (
                     <div className="mt-1">
@@ -333,6 +341,13 @@ export default async function ConfigDetailPage({
                   {t.key}
                 </span>
                 <span>{t.name}</span>
+                {t.unit || t.limitMin != null || t.limitMax != null ? (
+                  <span className="font-mono text-xs text-[var(--muted)]">
+                    {t.limitMin != null || t.limitMax != null
+                      ? `${t.limitMin ?? "…"}–${t.limitMax ?? "…"}${t.unit ? ` ${t.unit}` : ""}`
+                      : t.unit}
+                  </span>
+                ) : null}
                 {isDraft ? (
                   <ConfigEditButton
                     label="remove"
@@ -357,6 +372,7 @@ export default async function ConfigDetailPage({
                 label: `${t.key} — ${t.name}`,
               }))}
             />
+            <CreateAndPinTestForm configId={config.id} />
           ) : null}
         </Panel>
         <Panel>
@@ -397,6 +413,7 @@ export default async function ConfigDetailPage({
                 label: `${p.key} — ${p.title}`,
               }))}
             />
+            <CreateAndPinProcedureForm configId={config.id} />
           ) : null}
         </Panel>
       </div>

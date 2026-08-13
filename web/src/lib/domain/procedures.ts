@@ -36,7 +36,15 @@ export function createProcedure(
 
 export function createTestDefinition(
   db: Db,
-  input: { key: string; name: string; description: string; appliesTo: string },
+  input: {
+    key: string;
+    name: string;
+    description: string;
+    appliesTo: string;
+    unit?: string;
+    limitMin?: number | null;
+    limitMax?: number | null;
+  },
 ): ProcedureResult<{ testDefinitionId: string }> {
   const duplicate = db
     .select({ id: s.testDefinitions.id })
@@ -55,6 +63,9 @@ export function createTestDefinition(
       name: input.name,
       description: input.description,
       appliesTo: input.appliesTo,
+      unit: input.unit?.trim() ?? "",
+      limitMin: input.limitMin ?? null,
+      limitMax: input.limitMax ?? null,
     })
     .run();
   return { ok: true, testDefinitionId };
