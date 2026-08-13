@@ -29,7 +29,7 @@ export default function ArticlesPage() {
       title="Articles"
       subtitle="Named proto units. Effectivity targets serials like TP-017+; genealogy stays on the article."
     >
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <DataTable
             headers={["Serial", "Name", "Status", "As-built lines"]}
@@ -51,7 +51,7 @@ export default function ArticlesPage() {
         </Panel>
 
         <Panel>
-          <h2 className="font-display text-xl">New article</h2>
+          <h2 className="font-display">New article</h2>
           <NewArticleForm />
         </Panel>
       </div>

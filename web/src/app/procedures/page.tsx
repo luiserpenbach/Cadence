@@ -34,16 +34,16 @@ export default function ProceduresPage() {
       title="Procedures & tests"
       subtitle="Versioned instructions and the test vocabulary configs pin. Editing a procedure releases a new version; released configs keep the text they shipped with."
     >
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display text-xl">Procedures</h2>
+          <h2 className="font-display">Procedures</h2>
           <div className="mt-3 space-y-6">
             {[...byKey.entries()].map(([key, versions]) => {
               const latest = versions[versions.length - 1];
               return (
-                <div key={key} className="rounded-md bg-[var(--panel-strong)] p-4">
+                <div key={key} className="rounded-none bg-[var(--panel-strong)] p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs text-[var(--accent)]">
+                    <span className="font-mono text-xs text-[var(--muted)]">
                       {key}
                     </span>
                     {versions.map((v) => (
@@ -75,15 +75,15 @@ export default function ProceduresPage() {
 
         <div className="space-y-5">
           <Panel>
-            <h2 className="font-display text-xl">New procedure</h2>
+            <h2 className="font-display">New procedure</h2>
             <NewProcedureForm />
           </Panel>
           <Panel>
-            <h2 className="font-display text-xl">Test definitions</h2>
+            <h2 className="font-display">Test definitions</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {testDefs.map((t) => (
                 <li key={t.id} className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-[var(--accent)]">
+                  <span className="font-mono text-xs text-[var(--muted)]">
                     {t.key}
                   </span>
                   <span>{t.name}</span>

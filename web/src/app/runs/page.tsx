@@ -41,7 +41,7 @@ export default function RunsPage() {
       title="Runs"
       subtitle="Run = article + article config + stand + stand config. Verification is record-and-warn."
     >
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
         <DataTable
           headers={[
@@ -98,7 +98,7 @@ export default function RunsPage() {
         </Panel>
 
         <Panel>
-          <h2 className="font-display text-xl">New run</h2>
+          <h2 className="font-display">New run</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Pick article and stand — the resolver binds the most specific
             released configs. Conflicts and missing configs block.

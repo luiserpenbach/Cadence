@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -38,7 +38,7 @@ export default async function FloorPage({
           <select
             name="article"
             defaultValue={articleId}
-            className="mt-1 block rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            className={`mt-1 block ${inputClass}`}
           >
             {articles.map((a) => (
               <option key={a.id} value={a.id}>
@@ -52,7 +52,7 @@ export default async function FloorPage({
           <select
             name="stand"
             defaultValue={standId}
-            className="mt-1 block rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+            className={`mt-1 block ${inputClass}`}
           >
             {stands.map((st) => (
               <option key={st.id} value={st.id}>
@@ -63,7 +63,7 @@ export default async function FloorPage({
         </label>
         <button
           type="submit"
-          className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
+          className={buttonClass}
         >
           Show recipe
         </button>
@@ -112,7 +112,7 @@ export default async function FloorPage({
   ): React.ReactNode => {
     if (r.outcome === "none") {
       return (
-        <p className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-950">
+        <p className="alert alert-warn">
           No released {kind} config covers this bench. Do not build or test —
           ask the responsible engineer to release one.
         </p>
@@ -120,7 +120,7 @@ export default async function FloorPage({
     }
     if (r.outcome === "conflict") {
       return (
-        <p className="rounded-md bg-rose-100 px-3 py-2 text-sm text-rose-950">
+        <p className="alert alert-danger">
           Config conflict: {r.candidates.map((c) => c.key).join(" vs ")}. A
           designer must fix effectivity before this bench can run.
         </p>
@@ -137,7 +137,7 @@ export default async function FloorPage({
       <div className="mb-5">{picker}</div>
 
       {view.changedSinceLastRun && view.lastRunArticleConfig && resolvedArticleConfig ? (
-        <div className="mb-5 rounded-lg border border-amber-300 bg-amber-100 px-4 py-3 text-amber-950">
+        <div className="alert alert-warn mb-5">
           <div className="font-medium">
             ⚠ Configuration changed since the last run on {view.article.serial}
           </div>
@@ -149,7 +149,7 @@ export default async function FloorPage({
           </div>
         </div>
       ) : view.lastRun ? (
-        <div className="mb-5 rounded-lg border border-emerald-300 bg-emerald-100 px-4 py-3 text-sm text-emerald-950">
+        <div className="alert alert-ok mb-5">
           No configuration change since the last run on {view.article.serial}.
         </div>
       ) : null}
@@ -167,7 +167,7 @@ export default async function FloorPage({
 
       {changeDelta && changeDelta.length > 0 ? (
         <Panel className="mb-5">
-          <h2 className="font-display text-xl">What changed</h2>
+          <h2 className="font-display">What changed</h2>
           <div className="mt-3">
             <DataTable
               headers={["Change", "Part", "Detail"]}
@@ -206,9 +206,9 @@ export default async function FloorPage({
       ) : null}
 
       {articleBundle && resolvedArticleConfig ? (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Panel>
-            <h2 className="font-display text-xl">
+            <h2 className="font-display">
               Build to: {resolvedArticleConfig.key}
             </h2>
             <div className="mt-3">
@@ -230,7 +230,7 @@ export default async function FloorPage({
                       String(l.qty),
                       <span
                         key="a"
-                        className={short ? "font-medium text-rose-800" : undefined}
+                        className={short ? "font-medium text-[var(--danger)]" : undefined}
                       >
                         {avail}
                         {short ? " short" : ""}
@@ -246,7 +246,7 @@ export default async function FloorPage({
               (bundle) =>
                 bundle.procedures.map((p) => (
                   <Panel key={p.id}>
-                    <div className="font-mono text-xs text-[var(--accent)]">
+                    <div className="font-mono text-xs text-[var(--muted)]">
                       {p.key} · v{p.version}
                     </div>
                     <div className="font-medium">{p.title}</div>
@@ -257,7 +257,7 @@ export default async function FloorPage({
                 )),
             )}
             <Panel>
-              <h2 className="font-display text-xl">Kit this recipe</h2>
+              <h2 className="font-display">Kit this recipe</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 Reserve lots against {resolvedArticleConfig.key} for{" "}
                 {view.article.serial}, then issue to stamp as-built.
@@ -268,7 +268,7 @@ export default async function FloorPage({
               />
             </Panel>
             <Panel>
-              <h2 className="font-display text-xl">Next step</h2>
+              <h2 className="font-display">Next step</h2>
               <p className="mt-2 text-sm text-[var(--muted)]">
                 Ready to run? Bind it on the{" "}
                 <Link className="underline" href="/runs">
@@ -283,7 +283,7 @@ export default async function FloorPage({
 
       {standBundle && resolvedStandConfig ? (
         <Panel className="mt-5">
-          <h2 className="font-display text-xl">
+          <h2 className="font-display">
             Stand recipe: {resolvedStandConfig.key}
           </h2>
           <div className="mt-3">
@@ -306,7 +306,7 @@ export default async function FloorPage({
                     String(l.qty),
                     <span
                       key="a"
-                      className={short ? "font-medium text-rose-800" : undefined}
+                      className={short ? "font-medium text-[var(--danger)]" : undefined}
                     >
                       {avail}
                       {short ? " short" : ""}

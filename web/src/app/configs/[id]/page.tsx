@@ -111,9 +111,9 @@ export default async function ConfigDetailPage({
         ) : null}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display text-xl">BoM pins</h2>
+          <h2 className="font-display">BoM pins</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             <a className="underline" href={`/configs/${config.id}/bom.csv`}>
               Export CSV
@@ -219,12 +219,12 @@ export default async function ConfigDetailPage({
 
         <div className="space-y-5">
           <Panel>
-            <h2 className="font-display text-xl">Effectivity</h2>
+            <h2 className="font-display">Effectivity</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {effectivity.map((e) => (
                 <li
                   key={e.id}
-                  className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
+                  className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
                 >
                   <div>
                     Articles:{" "}
@@ -279,7 +279,7 @@ export default async function ConfigDetailPage({
 
           {config.status === "draft" ? (
             <Panel>
-              <h2 className="font-display text-xl">Release</h2>
+              <h2 className="font-display">Release</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 {config.riskClass === "R3"
                   ? "R3: a second person must approve — request first."
@@ -296,7 +296,7 @@ export default async function ConfigDetailPage({
             </Panel>
           ) : config.status === "in_review" ? (
             <Panel>
-              <h2 className="font-display text-xl">Awaiting review</h2>
+              <h2 className="font-display">Awaiting review</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
                 Requested by {config.releaseRequestedBy} ·{" "}
                 {config.releaseRequestedAt}
@@ -309,7 +309,7 @@ export default async function ConfigDetailPage({
             </Panel>
           ) : (
             <Panel>
-              <h2 className="font-display text-xl">
+              <h2 className="font-display">
                 {config.status === "superseded" ? "Superseded" : "Released"}
               </h2>
               <p className="mt-2 text-sm text-[var(--muted)]">
@@ -323,13 +323,13 @@ export default async function ConfigDetailPage({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
         <Panel>
-          <h2 className="font-display text-xl">Required tests</h2>
+          <h2 className="font-display">Required tests</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {tests.map((t) => (
               <li key={t.id} className="flex items-center gap-2">
-                <span className="font-mono text-xs text-[var(--accent)]">
+                <span className="font-mono text-xs text-[var(--muted)]">
                   {t.key}
                 </span>
                 <span>{t.name}</span>
@@ -360,12 +360,12 @@ export default async function ConfigDetailPage({
           ) : null}
         </Panel>
         <Panel>
-          <h2 className="font-display text-xl">Procedures</h2>
+          <h2 className="font-display">Procedures</h2>
           <div className="mt-3 space-y-4">
             {procedures.map((p) => (
               <div key={p.id}>
                 <div className="flex items-center gap-2">
-                  <div className="font-mono text-xs text-[var(--accent)]">
+                  <div className="font-mono text-xs text-[var(--muted)]">
                     {p.key} · v{p.version}
                   </div>
                   {isDraft ? (
@@ -402,7 +402,7 @@ export default async function ConfigDetailPage({
       </div>
 
       <Panel className="mt-5">
-        <h2 className="font-display text-xl">Attachments</h2>
+        <h2 className="font-display">Attachments</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Reference material for this config — release evidence, reports,
           drawings. Attachments are metadata, not pins.
@@ -414,7 +414,7 @@ export default async function ConfigDetailPage({
 
       {config.notes ? (
         <Panel className="mt-5">
-          <h2 className="font-display text-xl">Notes</h2>
+          <h2 className="font-display">Notes</h2>
           <p className="mt-2 text-sm text-[var(--muted)]">{config.notes}</p>
         </Panel>
       ) : null}

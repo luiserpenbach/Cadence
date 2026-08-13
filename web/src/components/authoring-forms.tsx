@@ -19,20 +19,14 @@ import {
   type ActionState,
 } from "../lib/actions";
 import { PartRevPicker, useRefreshOnOk } from "./pickers";
+import { buttonClass, compactInputClass, inputClass, subtleButtonClass } from "./ui";
 
 const initialState: ActionState = { ok: false, error: "" };
-
-const inputClass =
-  "w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm";
-const buttonClass =
-  "rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60";
-const subtleButtonClass =
-  "rounded-md border border-[var(--line)] px-3 py-1.5 text-sm disabled:opacity-60";
 
 function ActionError({ state }: { state: ActionState }) {
   if (!state.error) return null;
   return (
-    <p className="rounded-md bg-rose-100 px-3 py-2 text-sm text-rose-950">
+    <p className="msg-error">
       {state.error}
     </p>
   );
@@ -41,7 +35,7 @@ function ActionError({ state }: { state: ActionState }) {
 function ActionMessage({ state }: { state: ActionState }) {
   if (!state.ok || !state.message) return null;
   return (
-    <p className="rounded-md bg-emerald-100 px-3 py-2 text-sm text-emerald-950">
+    <p className="msg-ok">
       {state.message}
     </p>
   );
@@ -158,7 +152,7 @@ export function AttachmentForms({
           type="file"
           name="file"
           required
-          className="block w-full text-sm file:mr-2 file:rounded-md file:border file:border-[var(--line)] file:bg-white file:px-3 file:py-1.5 file:text-sm"
+          className="block w-full text-sm file:mr-2 file:rounded-none file:border file:border-[var(--line)] file:bg-[var(--control)] file:px-3 file:py-1.5 file:text-sm"
         />
         <div className="flex gap-2">
           <input
@@ -204,12 +198,12 @@ export function RemoveAttachmentButton({
       <input type="hidden" name="entityType" value={entityType} />
       <input type="hidden" name="entityId" value={entityId} />
       {state.error ? (
-        <span className="mr-1 text-xs text-rose-700">{state.error}</span>
+        <span className="mr-1 text-xs text-[var(--danger)]">{state.error}</span>
       ) : null}
       <button
         type="submit"
         disabled={pending}
-        className="text-xs text-rose-700 underline-offset-2 hover:underline disabled:opacity-60"
+        className="text-xs text-[var(--danger)] underline-offset-2 hover:underline disabled:opacity-60"
       >
         remove
       </button>
@@ -547,7 +541,7 @@ export function BomLineEditor({
       <select
         name="partRevisionId"
         defaultValue={currentRevId}
-        className="max-w-56 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+        className={`max-w-56 ${compactInputClass}`}
       >
         {revOptions.map((r) => (
           <option key={r.id} value={r.id}>
@@ -561,30 +555,30 @@ export function BomLineEditor({
         step="any"
         min="0"
         defaultValue={qty}
-        className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+        className={`w-16 ${compactInputClass}`}
       />
       <input
         name="findNumber"
         required
         defaultValue={findNumber}
         placeholder="find"
-        className="w-16 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+        className={`w-16 ${compactInputClass}`}
       />
       <input
         name="notes"
         defaultValue={notes}
         placeholder="notes"
-        className="w-28 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs"
+        className={`w-28 ${compactInputClass}`}
       />
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md border border-[var(--line)] px-2 py-1 text-xs disabled:opacity-60"
+        className={`${subtleButtonClass} px-2 py-1 text-xs`}
       >
         Save
       </button>
       {state.error ? (
-        <span className="text-xs text-rose-700">{state.error}</span>
+        <span className="text-xs text-[var(--danger)]">{state.error}</span>
       ) : null}
     </form>
   );
@@ -608,12 +602,12 @@ export function ConfigEditButton({
         <input key={k} type="hidden" name={k} value={v} />
       ))}
       {state.error ? (
-        <span className="mr-2 text-xs text-rose-700">{state.error}</span>
+        <span className="mr-2 text-xs text-[var(--danger)]">{state.error}</span>
       ) : null}
       <button
         type="submit"
         disabled={pending}
-        className="text-xs text-rose-700 underline-offset-2 hover:underline disabled:opacity-60"
+        className="text-xs text-[var(--danger)] underline-offset-2 hover:underline disabled:opacity-60"
       >
         {label}
       </button>

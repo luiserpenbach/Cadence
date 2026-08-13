@@ -18,7 +18,7 @@ export default function ConfigsPage() {
       title="Configurations"
       subtitle="Cheap to create, gated to release. Article configs and stand configs are separate deployable units."
     >
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <DataTable
             headers={["Key", "Kind", "Status", "Risk", "Based on", ""]}
@@ -55,7 +55,7 @@ export default function ConfigsPage() {
               <Link
                 key="o"
                 href={`/configs/${c.id}`}
-                className="text-sm text-[var(--accent)]"
+                className="text-[11px] font-medium uppercase tracking-[0.08em] underline underline-offset-2"
               >
                 Open
               </Link>,
@@ -65,7 +65,7 @@ export default function ConfigsPage() {
 
         <div className="space-y-5">
         <Panel>
-          <h2 className="font-display text-xl">Cut new config</h2>
+          <h2 className="font-display">Cut new config</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Clone BoM pins, procedures, and required tests from a parent.
           </p>
@@ -80,7 +80,7 @@ export default function ConfigsPage() {
         </Panel>
 
         <Panel>
-          <h2 className="font-display text-xl">New config from scratch</h2>
+          <h2 className="font-display">New config from scratch</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Empty draft — author BoM pins, tests, procedures, and effectivity
             on the config page.

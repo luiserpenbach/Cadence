@@ -109,9 +109,9 @@ export default async function KitDetailPage({
         </Link>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display text-xl">Lines</h2>
+          <h2 className="font-display">Lines</h2>
           <div className="mt-3">
             <DataTable
               headers={["Find", "Part", "Rev", "Qty", "Lot", "Allocate"]}
@@ -166,7 +166,7 @@ export default async function KitDetailPage({
           </div>
         </Panel>
         <Panel>
-          <h2 className="font-display text-xl">Issue</h2>
+          <h2 className="font-display">Issue</h2>
           <p className="mt-1 text-sm text-[var(--muted)]">
             Allocate every line, then issue. Cadence reserves on allocate and
             consumes + stamps as-built on issue.

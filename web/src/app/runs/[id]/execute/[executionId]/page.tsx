@@ -53,23 +53,23 @@ export default async function ExecutionPage({
       </div>
 
       {execution.status === "aborted" ? (
-        <div className="mb-5 rounded-lg border border-rose-300 bg-rose-100 px-4 py-3 text-sm text-rose-950">
+        <div className="alert alert-danger mb-5">
           Aborted: {execution.abortReason}
         </div>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display text-xl">Steps</h2>
+          <h2 className="font-display">Steps</h2>
           <ol className="mt-3 space-y-2">
             {steps.map((step) => {
               const isNext = step.index === nextIndex;
               return (
                 <li
                   key={step.index}
-                  className={`rounded-md px-3 py-2 text-sm ${
+                  className={`rounded-none px-3 py-2 text-sm ${
                     isNext
-                      ? "border border-[var(--accent)] bg-white"
+                      ? "border border-[var(--ink)] bg-[var(--control)]"
                       : "bg-[var(--panel-strong)]"
                   }`}
                 >
@@ -112,7 +112,7 @@ export default async function ExecutionPage({
         <div className="space-y-5">
           {nextIndex !== null ? (
             <Panel>
-              <h2 className="font-display text-xl">
+              <h2 className="font-display">
                 Step {nextIndex + 1} of {steps.length}
               </h2>
               <p className="mt-2 text-sm">{steps[nextIndex].instruction}</p>
@@ -124,7 +124,7 @@ export default async function ExecutionPage({
             </Panel>
           ) : (
             <Panel>
-              <h2 className="font-display text-xl">
+              <h2 className="font-display">
                 {execution.status === "complete"
                   ? "Execution complete"
                   : "No steps left"}
@@ -139,7 +139,7 @@ export default async function ExecutionPage({
 
           {execution.status === "in_progress" ? (
             <Panel>
-              <h2 className="font-display text-xl">Abort</h2>
+              <h2 className="font-display">Abort</h2>
               <AbortExecutionForm runId={run.id} executionId={execution.id} />
             </Panel>
           ) : null}

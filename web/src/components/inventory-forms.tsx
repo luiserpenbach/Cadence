@@ -21,19 +21,14 @@ import {
   type ActionState,
 } from "../lib/actions";
 import { PartRevPicker, useRefreshOnOk } from "./pickers";
+import { buttonClass, compactInputClass, inputClass, subtleButtonClass } from "./ui";
 
 const initialState: ActionState = { ok: false, error: "" };
-const inputClass =
-  "w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm";
-const buttonClass =
-  "rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)] disabled:opacity-60";
-const subtleButtonClass =
-  "rounded-md border border-[var(--line)] px-3 py-1.5 text-sm disabled:opacity-60";
 
 function ActionError({ state }: { state: ActionState }) {
   if (!state.error) return null;
   return (
-    <p className="rounded-md bg-rose-100 px-3 py-2 text-sm text-rose-950">
+    <p className="msg-error">
       {state.error}
     </p>
   );
@@ -42,7 +37,7 @@ function ActionError({ state }: { state: ActionState }) {
 function ActionMessage({ state }: { state: ActionState }) {
   if (!state.ok || !state.message) return null;
   return (
-    <p className="rounded-md bg-emerald-100 px-3 py-2 text-sm text-emerald-950">
+    <p className="msg-ok">
       {state.message}
     </p>
   );
@@ -248,18 +243,18 @@ export function AllocateKitLineForm({
     <form action={formAction} className="flex flex-wrap items-center gap-1.5">
       <input type="hidden" name="kitId" value={kitId} />
       <input type="hidden" name="kitLineId" value={kitLineId} />
-      <select name="lotId" className="rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs">
+      <select name="lotId" className={compactInputClass}>
         {lots.map((l) => (
           <option key={l.id} value={l.id}>
             {l.label}
           </option>
         ))}
       </select>
-      <input name="by" defaultValue="m.chen" className="w-24 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-xs" />
+      <input name="by" defaultValue="m.chen" className={`w-24 ${compactInputClass}`} />
       <button type="submit" disabled={pending} className="text-xs underline">
         Allocate
       </button>
-      {state.error ? <span className="text-xs text-rose-700">{state.error}</span> : null}
+      {state.error ? <span className="text-xs text-[var(--danger)]">{state.error}</span> : null}
     </form>
   );
 }
@@ -281,7 +276,7 @@ export function UnallocateKitLineForm({
       <input type="hidden" name="kitId" value={kitId} />
       <input type="hidden" name="kitLineId" value={kitLineId} />
       <input type="hidden" name="by" value="m.chen" />
-      {state.error ? <span className="mr-1 text-xs text-rose-700">{state.error}</span> : null}
+      {state.error ? <span className="mr-1 text-xs text-[var(--danger)]">{state.error}</span> : null}
       <button type="submit" disabled={pending} className="text-xs underline">
         Unallocate
       </button>
@@ -461,8 +456,8 @@ export function ReverseAsBuiltButton({
       <input type="hidden" name="asBuiltId" value={asBuiltId} />
       <input type="hidden" name="articleId" value={articleId} />
       <input type="hidden" name="by" value="m.chen" />
-      {state.error ? <span className="mr-1 text-xs text-rose-700">{state.error}</span> : null}
-      <button type="submit" disabled={pending} className="text-xs text-rose-700 underline">
+      {state.error ? <span className="mr-1 text-xs text-[var(--danger)]">{state.error}</span> : null}
+      <button type="submit" disabled={pending} className="text-xs text-[var(--danger)] underline">
         reverse
       </button>
     </form>

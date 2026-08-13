@@ -69,7 +69,7 @@ export default function KitsPage() {
                 {k.status}
               </Badge>,
               `${allocated}/${kitLines.length}`,
-              <Link key="o" className="text-sm text-[var(--accent)] underline" href={`/kits/${k.id}`}>
+              <Link key="o" className="text-[11px] font-medium uppercase tracking-[0.08em] underline underline-offset-2" href={`/kits/${k.id}`}>
                 Open
               </Link>,
             ];

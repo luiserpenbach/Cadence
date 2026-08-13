@@ -109,9 +109,9 @@ export default async function ArticleDetailPage({
         <QrLabel identifier={article.serial} size={96} />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <h2 className="font-display text-xl">As-built</h2>
+          <h2 className="font-display">As-built</h2>
           <div className="mt-3">
             <DataTable
               headers={["Part", "Rev", "Qty", "Serial/Lot", "Run", ""]}
@@ -152,7 +152,7 @@ export default async function ArticleDetailPage({
             />
           </div>
 
-          <h2 className="mt-6 font-display text-xl">
+          <h2 className="mt-6 font-display">
             As-designed vs as-built
           </h2>
           {!delta ? (
@@ -188,7 +188,7 @@ export default async function ArticleDetailPage({
 
         <div className="space-y-5">
           <Panel>
-            <h2 className="font-display text-xl">Record as-built</h2>
+            <h2 className="font-display">Record as-built</h2>
             <AsBuiltForm
               articleId={article.id}
               partRevs={asBuiltOptions}
@@ -197,7 +197,7 @@ export default async function ArticleDetailPage({
           </Panel>
 
           <Panel>
-            <h2 className="font-display text-xl">Runs</h2>
+            <h2 className="font-display">Runs</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {runs.map((r) => (
                 <li key={r.id} className="flex items-center gap-2">

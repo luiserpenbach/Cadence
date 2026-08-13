@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
+import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -92,18 +92,18 @@ export default async function InventoryPage({
       title="Inventory"
       subtitle="Proto-cage stock that moves — receive, reserve, issue, and adjust lots."
     >
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <form method="get" className="mb-4 flex gap-2">
             <input
               name="q"
               defaultValue={q}
               placeholder="Search part, lot, location…"
-              className="w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm"
+              className={inputClass}
             />
             <button
               type="submit"
-              className="rounded-md bg-[var(--ink)] px-4 py-2 text-sm text-[var(--bg0)]"
+              className={buttonClass}
             >
               Search
             </button>
@@ -140,7 +140,7 @@ export default async function InventoryPage({
         </Panel>
         <div className="space-y-5">
           <Panel>
-            <h2 className="font-display text-xl">New lot</h2>
+            <h2 className="font-display">New lot</h2>
             <CreateLotForm
               partRevs={partRevs.map((p) => ({
                 id: p.id,
@@ -149,7 +149,7 @@ export default async function InventoryPage({
             />
           </Panel>
           <Panel>
-            <h2 className="font-display text-xl">Adjust</h2>
+            <h2 className="font-display">Adjust</h2>
             <AdjustLotForm
               lots={rows.map((r) => ({
                 id: r.id,
@@ -161,7 +161,7 @@ export default async function InventoryPage({
       </div>
 
       <Panel className="mt-5">
-        <h2 className="font-display text-xl">Recent movements</h2>
+        <h2 className="font-display">Recent movements</h2>
         <div className="mt-3">
           <DataTable
             compact

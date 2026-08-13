@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ActionState } from "../lib/actions";
-
-const inputClass =
-  "w-full rounded-md border border-[var(--line)] bg-white px-3 py-2 text-sm";
+import { inputClass } from "./ui";
 
 export function useRefreshOnOk(state: ActionState) {
   const router = useRouter();

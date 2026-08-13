@@ -1,18 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --ink: #10212b;
-  --muted: #5b6f7a;
-  --line: color-mix(in oklab, #1f3a47 18%, transparent);
-  --line-soft: color-mix(in oklab, #1f3a47 10%, transparent);
-  --panel: color-mix(in oklab, #ffffff 82%, #d7eef5);
-  --panel-strong: color-mix(in oklab, #ffffff 70%, #c5e6f0);
-  --chip: color-mix(in oklab, #1f3a47 8%, white);
-  --accent: #0e7490;
-  --accent-hot: #b45309;
-  --bg0: #edf5f8;
-  --bg1: #d9eef5;
-  --bg2: #f7f1e8;
+  --ink: #161615;
+  --muted: #5c5a53;
+  --line: color-mix(in oklab, var(--ink) 18%, transparent);
+  --line-soft: color-mix(in oklab, var(--ink) 9%, transparent);
+  --panel: #ffffff;
+  --panel-strong: #f2f0e8;
+  --control: #ffffff;
+  --chip: color-mix(in oklab, var(--ink) 6%, white);
+  --accent: #3f4a38;
+  --accent-hot: #8f4e1a;
+  --ok: #2c4a34;
+  --danger: #7a2e28;
+  --warn: #8a5a16;
+  --bg0: #ebe8df;
   --background: var(--bg0);
   --foreground: var(--ink);
 }
@@ -22,24 +24,58 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-body);
   --font-mono: var(--font-mono);
-  --font-display: var(--font-display);
+  --font-display: var(--font-body);
+}
+
+html {
+  background: var(--background);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  font-feature-settings: "ss01" 0, "kern" 1, "tnum" 1;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--ink) 14%, transparent);
+}
+
+:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 1px;
 }
 
 .font-display {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
-.atmosphere {
-  background:
-    radial-gradient(900px 500px at 10% -10%, #b9e7f3 0%, transparent 55%),
-    radial-gradient(700px 420px at 90% 0%, #f3e0c4 0%, transparent 50%),
-    linear-gradient(165deg, var(--bg0), var(--bg1) 45%, var(--bg2));
+h1.font-display {
+  font-size: 1.125rem;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+}
+
+h2.font-display {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.font-logo {
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  text-transform: lowercase;
 }
 
 a {
@@ -52,4 +88,48 @@ select,
 textarea,
 button {
   font: inherit;
+  border-radius: 0;
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.alert {
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  background: var(--panel);
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+}
+
+.alert-warn {
+  border-left-color: var(--warn);
+  color: var(--ink);
+}
+
+.alert-ok {
+  border-left-color: var(--ok);
+  color: var(--ink);
+}
+
+.alert-danger {
+  border-left-color: var(--danger);
+  color: var(--ink);
+}
+
+.msg-error {
+  border: 1px solid color-mix(in oklab, var(--danger) 35%, var(--line));
+  background: color-mix(in oklab, var(--danger) 8%, var(--panel));
+  color: var(--danger);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.msg-ok {
+  border: 1px solid color-mix(in oklab, var(--ok) 35%, var(--line));
+  background: color-mix(in oklab, var(--ok) 8%, var(--panel));
+  color: var(--ok);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
 }
