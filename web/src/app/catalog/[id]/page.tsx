@@ -7,6 +7,8 @@ import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { AttachmentsPanel } from "../../../components/attachments-panel";
 import { NewRevisionForm } from "../../../components/authoring-forms";
+import { EditPartForm } from "../../../components/inventory-forms";
+import { stockByRevision } from "../../../lib/domain/inventory";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,8 @@ export default async function PartDetailPage({
           .all()
       : [];
 
+  const stock = stockByRevision(db);
+
   return (
     <AppShell title={part.partNumber} subtitle={part.name}>
       <div className="mb-5 flex flex-wrap gap-2">
@@ -69,13 +73,19 @@ export default async function PartDetailPage({
           <h2 className="font-display text-xl">Revisions</h2>
           <div className="mt-3">
             <DataTable
-              headers={["Rev", "Status", "Notes", "Created"]}
+              headers={["Rev", "Status", "Notes", "On hand", "Created"]}
               rows={revisions.map((r) => [
                 <Badge key="r" tone="accent">
                   {r.revision}
                 </Badge>,
                 r.status,
                 r.notes || "—",
+                <span key="oh">
+                  {stock.get(r.id)?.onHand ?? 0}
+                  {stock.get(r.id)?.reserved
+                    ? ` (${stock.get(r.id)?.reserved} reserved)`
+                    : ""}
+                </span>,
                 <span key="c" className="text-xs text-[var(--muted)]">
                   {r.createdAt}
                 </span>,
@@ -116,6 +126,11 @@ export default async function PartDetailPage({
         </Panel>
 
         <div className="space-y-5">
+          <Panel>
+            <h2 className="font-display text-xl">Edit part</h2>
+            <EditPartForm part={part} />
+          </Panel>
+
           <Panel>
             <h2 className="font-display text-xl">Attachments</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">

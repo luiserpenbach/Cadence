@@ -341,32 +341,133 @@ export const asBuiltLines = sqliteTable("as_built_lines", {
     .references(() => partRevisions.id),
   qty: real("qty").notNull().default(1),
   serialOrLot: text("serial_or_lot").notNull().default(""),
+  // Set when this line consumed an inventory lot (so reverse can restock).
+  lotId: text("lot_id"),
   notes: text("notes").notNull().default(""),
   recordedAt: text("recorded_at")
     .notNull()
     .default(sql`(datetime('now'))`),
 });
 
-export const inventoryLots = sqliteTable("inventory_lots", {
-  id: text("id").primaryKey(),
-  partRevisionId: text("part_revision_id")
-    .notNull()
-    .references(() => partRevisions.id),
-  qtyOnHand: real("qty_on_hand").notNull().default(0),
-  location: text("location").notNull().default("PROTO-CAGE"),
-  lotCode: text("lot_code").notNull().default(""),
-});
+export const inventoryLots = sqliteTable(
+  "inventory_lots",
+  {
+    id: text("id").primaryKey(),
+    partRevisionId: text("part_revision_id")
+      .notNull()
+      .references(() => partRevisions.id),
+    qtyOnHand: real("qty_on_hand").notNull().default(0),
+    qtyReserved: real("qty_reserved").notNull().default(0),
+    location: text("location").notNull().default("PROTO-CAGE"),
+    lotCode: text("lot_code").notNull().default(""),
+  },
+  (t) => [
+    uniqueIndex("inventory_lots_rev_lot_uidx").on(t.partRevisionId, t.lotCode),
+  ],
+);
 
-export const purchaseOrders = sqliteTable("purchase_orders", {
+export const movementKinds = [
+  "receive",
+  "adjust",
+  "issue",
+  "reserve",
+  "unreserve",
+  "kit_issue",
+] as const;
+export type MovementKind = (typeof movementKinds)[number];
+
+export const inventoryMovements = sqliteTable("inventory_movements", {
   id: text("id").primaryKey(),
-  poNumber: text("po_number").notNull(),
-  supplier: text("supplier").notNull(),
-  status: text("status").notNull().default("open"), // open | ordered | received
-  notes: text("notes").notNull().default(""),
+  lotId: text("lot_id")
+    .notNull()
+    .references(() => inventoryLots.id),
+  kind: text("kind").notNull(),
+  qty: real("qty").notNull(),
+  reason: text("reason").notNull().default(""),
+  by: text("by").notNull(),
+  refType: text("ref_type").notNull().default(""),
+  refId: text("ref_id").notNull().default(""),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+export const kitStatuses = ["open", "reserved", "issued", "cancelled"] as const;
+export type KitStatus = (typeof kitStatuses)[number];
+
+export const kits = sqliteTable(
+  "kits",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull(),
+    articleId: text("article_id")
+      .notNull()
+      .references(() => articles.id),
+    configId: text("config_id")
+      .notNull()
+      .references(() => configurations.id),
+    status: text("status").notNull().default("open"),
+    notes: text("notes").notNull().default(""),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    issuedAt: text("issued_at"),
+    issuedBy: text("issued_by"),
+    cancelledAt: text("cancelled_at"),
+    cancelledBy: text("cancelled_by"),
+  },
+  (t) => [uniqueIndex("kits_key_uidx").on(t.key)],
+);
+
+export const kitLines = sqliteTable("kit_lines", {
+  id: text("id").primaryKey(),
+  kitId: text("kit_id")
+    .notNull()
+    .references(() => kits.id),
+  partRevisionId: text("part_revision_id")
+    .notNull()
+    .references(() => partRevisions.id),
+  findNumber: text("find_number").notNull().default(""),
+  qty: real("qty").notNull().default(1),
+  lotId: text("lot_id").references(() => inventoryLots.id),
+});
+
+export const configBomAlternates = sqliteTable(
+  "config_bom_alternates",
+  {
+    id: text("id").primaryKey(),
+    bomLineId: text("bom_line_id")
+      .notNull()
+      .references(() => configBomLines.id),
+    partRevisionId: text("part_revision_id")
+      .notNull()
+      .references(() => partRevisions.id),
+  },
+  (t) => [
+    uniqueIndex("config_bom_alternates_line_rev_uidx").on(
+      t.bomLineId,
+      t.partRevisionId,
+    ),
+  ],
+);
+
+export const purchaseOrders = sqliteTable(
+  "purchase_orders",
+  {
+    id: text("id").primaryKey(),
+    poNumber: text("po_number").notNull(),
+    supplier: text("supplier").notNull(),
+    status: text("status").notNull().default("open"), // open | ordered | received
+    notes: text("notes").notNull().default(""),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    receivedAt: text("received_at"),
+    receivedBy: text("received_by"),
+  },
+  (t) => [uniqueIndex("purchase_orders_po_number_uidx").on(t.poNumber)],
+);
 
 export const purchaseOrderLines = sqliteTable("purchase_order_lines", {
   id: text("id").primaryKey(),

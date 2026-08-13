@@ -37,10 +37,14 @@ npm run db:generate   # drizzle-kit migration from schema changes
 | `/configs/[id]` | BoM pins, effectivity, tests, procedures, release |
 | `/articles` | Proto serials |
 | `/stands` | Test stands |
+| `/floor` | Machinist recipe for (article, stand) |
 | `/runs` | Runs bound to article+stand configs |
 | `/runs/[id]` | Verification gaps, ack, record results |
+| `/procedures` | Versioned work instructions |
+| `/trace` | Serial / lot genealogy |
 | `/change` | Config delta / blast radius |
-| `/inventory` | Thin stock |
-| `/procurement` | Thin POs |
+| `/inventory` | Lots, receive/adjust, search, kit holds |
+| `/kits` | Reserve lots (allocate remaining) and issue as-built |
+| `/procurement` | POs and receive-into-stock |
 
 See repo root [`CONCEPT.md`](../CONCEPT.md) for product decisions.

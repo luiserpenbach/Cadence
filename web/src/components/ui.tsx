@@ -12,6 +12,7 @@ const nav = [
   { href: "/trace", label: "Trace" },
   { href: "/change", label: "Change impact" },
   { href: "/inventory", label: "Inventory" },
+  { href: "/kits", label: "Kits" },
   { href: "/procurement", label: "Procurement" },
 ];
 
@@ -111,13 +112,19 @@ export function Badge({
 export function DataTable({
   headers,
   rows,
+  empty,
+  compact = false,
 }: {
   headers: string[];
   rows: React.ReactNode[][];
+  empty?: React.ReactNode;
+  compact?: boolean;
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+      <table
+        className={`w-full border-collapse text-left text-sm ${compact ? "" : "min-w-[640px]"}`}
+      >
         <thead>
           <tr className="border-b border-[var(--line)] text-[var(--muted)]">
             {headers.map((h) => (
@@ -128,15 +135,26 @@ export function DataTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr key={i} className="border-b border-[var(--line-soft)] align-top">
-              {row.map((cell, j) => (
-                <td key={j} className="px-2 py-2.5">
-                  {cell}
-                </td>
-              ))}
+          {rows.length === 0 ? (
+            <tr>
+              <td
+                colSpan={headers.length}
+                className="px-2 py-6 text-sm text-[var(--muted)]"
+              >
+                {empty ?? "None yet."}
+              </td>
             </tr>
-          ))}
+          ) : (
+            rows.map((row, i) => (
+              <tr key={i} className="border-b border-[var(--line-soft)] align-top">
+                {row.map((cell, j) => (
+                  <td key={j} className="px-2 py-2.5">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>

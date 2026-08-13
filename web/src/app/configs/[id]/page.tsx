@@ -9,16 +9,19 @@ import {
   RequestReleaseForm,
 } from "../../../components/forms";
 import {
+  AddAlternateForm,
   AddBomLineForm,
   AddEffectivityForm,
   AddLinkForm,
   BomLineEditor,
   ConfigEditButton,
 } from "../../../components/authoring-forms";
+import { ImportBomForm } from "../../../components/inventory-forms";
 import { AttachmentsPanel } from "../../../components/attachments-panel";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { eq } from "drizzle-orm";
+import { stockByRevision } from "../../../lib/domain/inventory";
 
 export const dynamic = "force-dynamic";
 
@@ -48,21 +51,32 @@ export default async function ConfigDetailPage({
   const standById = Object.fromEntries(stands.map((st) => [st.id, st]));
 
   const isDraft = config.status === "draft";
-  const partRevs = isDraft
-    ? db
-        .select({
-          id: s.partRevisions.id,
-          partNumber: s.parts.partNumber,
-          revision: s.partRevisions.revision,
-        })
-        .from(s.partRevisions)
-        .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
-        .all()
-        .sort((a, b) => a.partNumber.localeCompare(b.partNumber))
-    : [];
+  const partRevs = db
+    .select({
+      id: s.partRevisions.id,
+      partNumber: s.parts.partNumber,
+      revision: s.partRevisions.revision,
+    })
+    .from(s.partRevisions)
+    .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
+    .all()
+    .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+  const partRevOptions = partRevs.map((p) => ({
+    id: p.id,
+    label: `${p.partNumber} @ ${p.revision}`,
+  }));
+  const revLabel = Object.fromEntries(partRevOptions.map((p) => [p.id, p.label]));
+  const alternates = db.select().from(s.configBomAlternates).all();
+  const altsByLine = new Map<string, typeof alternates>();
+  for (const a of alternates) {
+    const list = altsByLine.get(a.bomLineId) ?? [];
+    list.push(a);
+    altsByLine.set(a.bomLineId, list);
+  }
   const allTestDefs = isDraft ? db.select().from(s.testDefinitions).all() : [];
   const allProcedures = isDraft ? db.select().from(s.procedures).all() : [];
   const allArticles = isDraft ? db.select().from(s.articles).all() : [];
+  const stock = stockByRevision(db);
 
   return (
     <AppShell
@@ -100,17 +114,24 @@ export default async function ConfigDetailPage({
       <div className="grid gap-5 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
           <h2 className="font-display text-xl">BoM pins</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            <a className="underline" href={`/configs/${config.id}/bom.csv`}>
+              Export CSV
+            </a>
+          </p>
           <div className="mt-3">
             <DataTable
+              empty="No pins yet — add one or import CSV."
               headers={
                 isDraft
-                  ? ["Part", "Name", "Rev / Qty / Find", ""]
-                  : ["Find", "Part", "Rev", "Qty", "Name"]
+                  ? ["Find / Part", "Name", "Rev / Qty / Notes", ""]
+                  : ["Find", "Part", "Rev", "Qty", "Avail", "Name", "Notes"]
               }
               rows={bom
                 .slice()
                 .sort((a, b) => a.findNumber.localeCompare(b.findNumber))
                 .map((l) => {
+                  const lineAlts = altsByLine.get(l.id) ?? [];
                   if (!isDraft) {
                     return [
                       <span key="f" className="font-mono text-xs">
@@ -121,26 +142,52 @@ export default async function ConfigDetailPage({
                       </span>,
                       l.revision,
                       String(l.qty),
+                      String(stock.get(l.partRevisionId)?.available ?? 0),
                       l.name,
+                      <span key="n" className="text-[var(--muted)]">
+                        {l.notes || "—"}
+                        {lineAlts.length
+                          ? ` · alts ${lineAlts.map((a) => revLabel[a.partRevisionId] ?? a.partRevisionId).join(", ")}`
+                          : ""}
+                      </span>,
                     ];
                   }
-                  const revOptions = partRevs
-                    .filter((p) => p.partNumber === l.partNumber)
-                    .map((p) => ({ id: p.id, label: `rev ${p.revision}` }));
                   return [
-                    <span key="p" className="font-mono text-xs">
-                      {l.partNumber}
-                    </span>,
+                    <div key="p">
+                      <div className="font-mono text-xs">{l.findNumber || "—"}</div>
+                      <div className="font-mono text-xs">{l.partNumber}</div>
+                    </div>,
                     l.name,
-                    <BomLineEditor
-                      key="e"
-                      configId={config.id}
-                      bomLineId={l.id}
-                      revOptions={revOptions}
-                      currentRevId={l.partRevisionId}
-                      qty={l.qty}
-                      findNumber={l.findNumber}
-                    />,
+                    <div key="e" className="space-y-2">
+                      <BomLineEditor
+                        configId={config.id}
+                        bomLineId={l.id}
+                        revOptions={partRevOptions}
+                        currentRevId={l.partRevisionId}
+                        qty={l.qty}
+                        findNumber={l.findNumber}
+                        notes={l.notes}
+                      />
+                      <div className="text-xs text-[var(--muted)]">
+                        Alts:{" "}
+                        {lineAlts.length
+                          ? lineAlts.map((a) => (
+                              <span key={a.id} className="mr-2">
+                                {revLabel[a.partRevisionId] ?? a.partRevisionId}{" "}
+                                <ConfigEditButton
+                                  label="×"
+                                  payload={{
+                                    op: "remove_alt",
+                                    configId: config.id,
+                                    bomLineId: l.id,
+                                    partRevisionId: a.partRevisionId,
+                                  }}
+                                />
+                              </span>
+                            ))
+                          : "none"}
+                      </div>
+                    </div>,
                     <ConfigEditButton
                       key="rm"
                       label="remove"
@@ -155,13 +202,18 @@ export default async function ConfigDetailPage({
             />
           </div>
           {isDraft ? (
-            <AddBomLineForm
-              configId={config.id}
-              partRevs={partRevs.map((p) => ({
-                id: p.id,
-                label: `${p.partNumber} @ ${p.revision}`,
-              }))}
-            />
+            <>
+              <AddBomLineForm configId={config.id} partRevs={partRevOptions} />
+              <AddAlternateForm
+                configId={config.id}
+                lines={bom.map((l) => ({
+                  id: l.id,
+                  label: `${l.findNumber || "—"} ${l.partNumber} @ ${l.revision}`,
+                }))}
+                partRevs={partRevOptions}
+              />
+              <ImportBomForm configId={config.id} />
+            </>
           ) : null}
         </Panel>
 

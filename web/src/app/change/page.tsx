@@ -4,6 +4,7 @@ import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
 import { buildImpactReport, getDefaultDelta } from "../../lib/impact";
+import { ShortagePoForm } from "../../components/inventory-forms";
 
 export const dynamic = "force-dynamic";
 
@@ -135,7 +136,10 @@ export default async function ChangePage({
                 </span>,
                 d.type === "changed" ? (
                   <span key="d">
-                    {d.name}: rev {d.fromRevision}→{d.toRevision}
+                    {d.name}:{" "}
+                    {d.fromPartNumber !== d.toPartNumber
+                      ? `${d.fromPartNumber}@${d.fromRevision} → ${d.toPartNumber}@${d.toRevision}`
+                      : `rev ${d.fromRevision}→${d.toRevision}`}
                     {d.fromQty !== d.toQty
                       ? ` · qty ${d.fromQty}→${d.toQty}`
                       : ""}
@@ -199,22 +203,36 @@ export default async function ChangePage({
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Panel>
           <h2 className="font-display text-xl">Inventory shortages</h2>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Demand is {impact.kitCount} kit{impact.kitCount === 1 ? "" : "s"} of{" "}
+            {to.key} (articles covered by the new config, minimum 1). Available
+            is on-hand minus kit reservations; inbound POs count toward covering
+            the gap.
+          </p>
           {impact.inventoryShortages.length === 0 ? (
             <p className="mt-2 text-sm text-[var(--muted)]">
-              Enough on hand for one kit of {to.key}.
+              Enough on hand (plus inbound POs) for {impact.kitCount} kit
+              {impact.kitCount === 1 ? "" : "s"} of {to.key}.
             </p>
           ) : (
-            <DataTable
-              headers={["Part", "Rev", "Need", "On hand"]}
-              rows={impact.inventoryShortages.map((row) => [
-                <span key="p" className="font-mono text-xs">
-                  {row.partNumber}
-                </span>,
-                row.revision,
-                String(row.needed),
-                String(row.onHand),
-              ])}
-            />
+            <>
+              <DataTable
+                compact
+                headers={["Part", "Rev", "Need", "Avail", "On hand", "Inbound", "Short"]}
+                rows={impact.inventoryShortages.map((row) => [
+                  <span key="p" className="font-mono text-xs">
+                    {row.partNumber}
+                  </span>,
+                  row.revision,
+                  String(row.needed),
+                  String(row.available),
+                  String(row.onHand),
+                  String(row.inbound),
+                  String(row.short),
+                ])}
+              />
+              <ShortagePoForm configId={to.id} />
+            </>
           )}
         </Panel>
         <Panel>

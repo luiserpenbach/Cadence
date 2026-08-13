@@ -12,7 +12,7 @@ import {
   makeRun,
   makeStand,
 } from "../../test/fixtures";
-import { diffAsBuilt, recordAsBuilt } from "./asbuilt";
+import { diffAsBuilt, recordAsBuilt, reverseAsBuilt } from "./asbuilt";
 
 describe("as-built capture and delta", () => {
   let db: Db;
@@ -106,9 +106,55 @@ describe("as-built capture and delta", () => {
     expect(delta.lines).toHaveLength(0);
   });
 
-  it("returns null when the article has no runs", () => {
+  it("returns null when the article has no runs, no covering config, and no as-built", () => {
     const loose = makeArticle(db, "TP-050");
     expect(diffAsBuilt(db, loose)).toBeNull();
+  });
+
+  it("compares as-built to the live resolved config when there is no run", () => {
+    const loose = makeArticle(db, "TP-050");
+    db.insert(s.configEffectivity)
+      .values({
+        id: id("eff"),
+        configId,
+        articleScope: "any",
+        standScope: "any",
+      })
+      .run();
+    recordAsBuilt(db, {
+      articleId: loose,
+      partRevisionId: valveRevA,
+      qty: 1,
+      serialOrLot: "SN-X",
+    });
+    const delta = diffAsBuilt(db, loose)!;
+    expect(delta.configKey).toBe("CFG-N");
+    expect(delta.lines.some((l) => l.kind === "missing")).toBe(true);
+  });
+
+  it("consumes a matching inventory lot and can reverse it", () => {
+    db.insert(s.inventoryLots)
+      .values({
+        id: id("inv"),
+        partRevisionId: valveRevA,
+        qtyOnHand: 2,
+        lotCode: "LOT-V",
+      })
+      .run();
+    expect(
+      recordAsBuilt(db, {
+        articleId,
+        partRevisionId: valveRevA,
+        qty: 1,
+        serialOrLot: "LOT-V",
+        by: "tech",
+      }).ok,
+    ).toBe(true);
+    const lot = db.select().from(s.inventoryLots).all()[0];
+    expect(lot.qtyOnHand).toBe(1);
+    const line = db.select().from(s.asBuiltLines).all().at(-1)!;
+    expect(reverseAsBuilt(db, { asBuiltId: line.id, by: "tech" }).ok).toBe(true);
+    expect(db.select().from(s.inventoryLots).all()[0].qtyOnHand).toBe(2);
   });
 
   it("uses the most recent run's config", () => {

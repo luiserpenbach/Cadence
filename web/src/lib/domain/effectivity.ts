@@ -85,3 +85,46 @@ export function configCovers(
 ): boolean {
   return configRank(db, configId, ctx) !== null;
 }
+
+// Article-axis coverage only (stand ignored). Used for "who stays on the
+// prior config" and kit-count demand — a serial_range/explicit cut-in
+// should not pretend to cover every article.
+export function configCoversArticle(
+  db: DbOrTx,
+  configId: string,
+  article: { id: string; serial: string },
+): boolean {
+  const rows = db
+    .select()
+    .from(s.configEffectivity)
+    .where(eq(s.configEffectivity.configId, configId))
+    .all();
+  if (rows.length === 0) return false;
+
+  for (const row of rows) {
+    if (row.articleScope === "any") return true;
+    if (row.articleScope === "serial_range") {
+      if (row.serialFrom && compareSerials(article.serial, row.serialFrom) < 0) {
+        continue;
+      }
+      if (row.serialTo && compareSerials(article.serial, row.serialTo) > 0) {
+        continue;
+      }
+      return true;
+    }
+    if (row.articleScope === "explicit") {
+      const link = db
+        .select({ id: s.configEffectivityArticles.id })
+        .from(s.configEffectivityArticles)
+        .where(
+          and(
+            eq(s.configEffectivityArticles.effectivityId, row.id),
+            eq(s.configEffectivityArticles.articleId, article.id),
+          ),
+        )
+        .get();
+      if (link) return true;
+    }
+  }
+  return false;
+}

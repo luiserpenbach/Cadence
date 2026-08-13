@@ -6,7 +6,9 @@ import { ensureAppData } from "../../../lib/bootstrap";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
 import { diffAsBuilt } from "../../../lib/domain/asbuilt";
+import { getConfigBom } from "../../../lib/impact";
 import { AsBuiltForm } from "../../../components/authoring-forms";
+import { ReverseAsBuiltButton } from "../../../components/inventory-forms";
 import { QrLabel } from "../../../components/qr";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +68,20 @@ export default async function ArticleDetailPage({
     .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
 
   const delta = diffAsBuilt(db, article.id);
+  const designedPins = delta?.configId ? getConfigBom(delta.configId) : [];
+  const pinRevIds = new Set(designedPins.map((p) => p.partRevisionId));
+  const asBuiltOptions = [
+    ...designedPins.map((p) => ({
+      id: p.partRevisionId,
+      label: `pin ${p.findNumber} · ${p.partNumber} @ ${p.revision}`,
+    })),
+    ...partRevs
+      .filter((p) => !pinRevIds.has(p.id))
+      .map((p) => ({
+        id: p.id,
+        label: `${p.partNumber} @ ${p.revision}`,
+      })),
+  ];
 
   return (
     <AppShell title={article.serial} subtitle={article.name}>
@@ -81,7 +97,7 @@ export default async function ArticleDetailPage({
               </Badge>
             )
           ) : (
-            <Badge tone="neutral">no bound run yet</Badge>
+            <Badge tone="neutral">no covering config</Badge>
           )}
           <Link
             className="text-sm underline"
@@ -98,7 +114,7 @@ export default async function ArticleDetailPage({
           <h2 className="font-display text-xl">As-built</h2>
           <div className="mt-3">
             <DataTable
-              headers={["Part", "Rev", "Qty", "Serial/Lot", "Run"]}
+              headers={["Part", "Rev", "Qty", "Serial/Lot", "Run", ""]}
               rows={asBuilt.map((l) => [
                 <span key="p" className="font-mono text-xs">
                   {l.partNumber}
@@ -127,6 +143,11 @@ export default async function ArticleDetailPage({
                 ) : (
                   "—"
                 ),
+                <ReverseAsBuiltButton
+                  key="rev"
+                  asBuiltId={l.id}
+                  articleId={article.id}
+                />,
               ])}
             />
           </div>
@@ -136,7 +157,7 @@ export default async function ArticleDetailPage({
           </h2>
           {!delta ? (
             <p className="mt-2 text-sm text-[var(--muted)]">
-              Bind a run to compare against a released config.
+              No covering config and no as-built yet.
             </p>
           ) : delta.lines.length === 0 ? (
             <p className="mt-2 text-sm text-[var(--muted)]">
@@ -170,10 +191,7 @@ export default async function ArticleDetailPage({
             <h2 className="font-display text-xl">Record as-built</h2>
             <AsBuiltForm
               articleId={article.id}
-              partRevs={partRevs.map((p) => ({
-                id: p.id,
-                label: `${p.partNumber} @ ${p.revision}`,
-              }))}
+              partRevs={asBuiltOptions}
               runs={runs.map((r) => ({ id: r.id, key: r.key }))}
             />
           </Panel>
