@@ -4,12 +4,22 @@ import * as s from "../../db/schema";
 import { id } from "../id";
 import { createTestDb } from "../../test/db";
 import {
+  addBomLine,
   makeArticle,
   makeConfig,
+  makePart,
   makeRun,
   makeStand,
 } from "../../test/fixtures";
+import { diffAsBuilt, reverseAsBuilt } from "./asbuilt";
 import { getFloorView } from "./floor";
+import { createLot } from "./inventory";
+import {
+  allocateRemaining,
+  createKit,
+  findActiveKit,
+  issueKit,
+} from "./kits";
 
 describe("getFloorView", () => {
   let db: Db;
@@ -76,5 +86,44 @@ describe("getFloorView", () => {
   it("returns null for unknown article or stand", () => {
     expect(getFloorView(db, "nope", standId)).toBeNull();
     expect(getFloorView(db, articleId, "nope")).toBeNull();
+  });
+
+  it("kits, issues as-built, and reverse for the resolved floor article", () => {
+    const part = makePart(db, "VLV-001");
+    const configId = releasedConfig("ART-N");
+    addBomLine(db, configId, part.revId, 1, "10");
+    releasedConfig("STAND-N", "stand");
+
+    const view = getFloorView(db, articleId, standId)!;
+    expect(view.articleResolution.outcome).toBe("resolved");
+    expect(findActiveKit(db, articleId, configId)).toBeUndefined();
+
+    const lot = createLot(db, {
+      partRevisionId: part.revId,
+      qty: 1,
+      lotCode: "LOT-V",
+      location: "CAGE",
+      by: "cage",
+    });
+    expect(lot.ok).toBe(true);
+
+    const kit = createKit(db, { articleId, configId, by: "cage" });
+    expect(kit.ok).toBe(true);
+    if (!kit.ok) return;
+    expect(findActiveKit(db, articleId, configId)?.id).toBe(kit.kitId);
+    expect(allocateRemaining(db, { kitId: kit.kitId, by: "cage" }).ok).toBe(
+      true,
+    );
+    expect(issueKit(db, { kitId: kit.kitId, by: "cage" }).ok).toBe(true);
+
+    const matched = diffAsBuilt(db, articleId)!;
+    expect(matched.lines).toHaveLength(0);
+
+    const line = db.select().from(s.asBuiltLines).all()[0];
+    expect(reverseAsBuilt(db, { asBuiltId: line.id, by: "tech" }).ok).toBe(
+      true,
+    );
+    const after = diffAsBuilt(db, articleId)!;
+    expect(after.lines.some((l) => l.kind === "missing")).toBe(true);
   });
 });
