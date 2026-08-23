@@ -10,9 +10,10 @@ import {
   makePart,
   makeRevision,
 } from "../test/fixtures";
-import { buildImpactReport, diffBom, getDefaultDelta } from "./impact";
+import { buildImpactReport, diffBom, getDefaultDelta, shortagesForConfig } from "./impact";
 import { compareSerials } from "./serial";
 import { createLot, reserveLot } from "./domain/inventory";
+import { createWorkOrder } from "./domain/work-orders";
 
 describe("compareSerials", () => {
   it("compares numeric runs as numbers", () => {
@@ -200,5 +201,27 @@ describe("buildImpactReport", () => {
       available: 0,
       short: 2,
     });
+  });
+
+  it("counts an open work order as inbound so the pin is not short", () => {
+    const revId = makePart(db, "INJ-100", "A", { sourcing: "make" }).revId;
+    const configId = makeConfig(db, "CFG-N");
+    addBomLine(db, configId, revId, 1, "10");
+
+    const before = shortagesForConfig(configId, 1).find(
+      (r) => r.partRevisionId === revId,
+    );
+    expect(before?.short).toBe(1);
+
+    expect(
+      createWorkOrder(db, { partRevisionId: revId, qty: 1, by: "shop" }).ok,
+    ).toBe(true);
+
+    const after = shortagesForConfig(configId, 1).find(
+      (r) => r.partRevisionId === revId,
+    );
+    expect(after?.short).toBe(0);
+    expect(after?.available).toBe(0);
+    expect(after?.inbound).toBe(1);
   });
 });

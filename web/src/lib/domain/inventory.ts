@@ -431,3 +431,13 @@ export function inboundByRevision(db: DbOrTx): Map<string, number> {
   }
   return map;
 }
+
+export function workOrderInboundByRevision(db: DbOrTx): Map<string, number> {
+  const orders = db.select().from(s.workOrders).all();
+  const map = new Map<string, number>();
+  for (const wo of orders) {
+    if (wo.status !== "open" && wo.status !== "in_progress") continue;
+    map.set(wo.partRevisionId, (map.get(wo.partRevisionId) ?? 0) + wo.qty);
+  }
+  return map;
+}

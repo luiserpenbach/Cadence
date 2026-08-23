@@ -74,5 +74,9 @@ describe("work orders", () => {
     if (!result.ok) return;
     expect(result.created).toHaveLength(1);
     expect(result.created[0].partNumber).toBe("INJ-100");
+
+    const again = openWorkOrdersForShortages(db, { configId, by: "shop" });
+    expect(again.ok).toBe(false);
+    expect(db.select().from(s.workOrders).all()).toHaveLength(1);
   });
 });

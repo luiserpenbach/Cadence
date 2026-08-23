@@ -5,7 +5,7 @@ import { getDb } from "../../db";
 import * as s from "../../db/schema";
 import { diffAsBuilt } from "../../lib/domain/asbuilt";
 import { getFloorView } from "../../lib/domain/floor";
-import { diffBom } from "../../lib/impact";
+import { diffBom, shortagesForConfig } from "../../lib/impact";
 import { getConfigBundle } from "../../lib/queries";
 import { stockByRevision } from "../../lib/domain/inventory";
 import { findActiveKit } from "../../lib/domain/kits";
@@ -101,13 +101,9 @@ export default async function FloorPage({
     .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
     .where(eq(s.asBuiltLines.articleId, view.article.id))
     .all();
-  const floorShorts =
-    articleBundle && resolvedArticleConfig
-      ? [...articleBundle.bom].filter((l) => {
-          const avail = stock.get(l.partRevisionId)?.available ?? 0;
-          return avail < l.qty;
-        })
-      : [];
+  const floorShorts = resolvedArticleConfig
+    ? shortagesForConfig(resolvedArticleConfig.id, 1).filter((row) => row.short > 0)
+    : [];
 
   const changeDelta =
     view.changedSinceLastRun && resolvedArticleConfig && view.lastRun

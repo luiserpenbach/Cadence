@@ -3,7 +3,11 @@ import { getDb } from "../db";
 import * as s from "../db/schema";
 import { compareSerials } from "./serial";
 import { configCoversArticle } from "./domain/effectivity";
-import { inboundByRevision, stockByRevision } from "./domain/inventory";
+import {
+  inboundByRevision,
+  stockByRevision,
+  workOrderInboundByRevision,
+} from "./domain/inventory";
 
 export type BomPin = {
   partRevisionId: string;
@@ -189,13 +193,16 @@ export function shortagesForConfig(
   const db = getDb();
   const bom = getConfigBom(configId);
   const stock = stockByRevision(db);
-  const inbound = inboundByRevision(db);
+  const inboundPo = inboundByRevision(db);
+  const inboundWo = workOrderInboundByRevision(db);
   const rows: ShortageRow[] = [];
   for (const line of bom) {
     const summary = stock.get(line.partRevisionId);
     const onHand = summary?.onHand ?? 0;
     const available = summary?.available ?? 0;
-    const inboundQty = inbound.get(line.partRevisionId) ?? 0;
+    const inboundPoQty = inboundPo.get(line.partRevisionId) ?? 0;
+    const inboundWoQty = inboundWo.get(line.partRevisionId) ?? 0;
+    const inboundQty = inboundPoQty + inboundWoQty;
     const needed = line.qty * kitCount;
     rows.push({
       partRevisionId: line.partRevisionId,
@@ -206,7 +213,7 @@ export function shortagesForConfig(
       onHand,
       available,
       inbound: inboundQty,
-      short: Math.max(0, needed - available - inboundQty),
+      short: Math.max(0, needed - available - inboundPoQty - inboundWoQty),
     });
   }
   return rows;
