@@ -1019,6 +1019,7 @@ export async function reverseAsBuiltAction(
   if (!result.ok) return fail(result.error);
   if (articleId) revalidatePath(`/articles/${articleId}`);
   revalidatePath("/inventory");
+  revalidatePath("/floor");
   return { ok: true, error: "" };
 }
 
@@ -1252,7 +1253,13 @@ export async function createKitAction(
   if (!result.ok) return fail(result.error);
   revalidatePath("/kits");
   revalidatePath("/floor");
-  redirect(`/kits/${result.kitId}`);
+  return {
+    ok: true,
+    error: "",
+    message: result.existing
+      ? `Kit ${result.key} already exists.`
+      : `Kit ${result.key} created.`,
+  };
 }
 
 export async function allocateKitLineAction(
@@ -1321,6 +1328,7 @@ export async function allocateRemainingAction(
   if (!result.ok) return fail(result.error);
   revalidatePath(`/kits/${parsed.data.kitId}`);
   revalidatePath("/inventory");
+  revalidatePath("/floor");
   const skipped =
     result.skipped > 0 ? ` (${result.skipped} line(s) still short)` : "";
   return {
@@ -1347,6 +1355,7 @@ export async function issueKitAction(
   if (!result.ok) return fail(result.error);
   revalidatePath(`/kits/${parsed.data.kitId}`);
   revalidatePath("/inventory");
+  revalidatePath("/floor");
   if (parsed.data.articleId) {
     revalidatePath(`/articles/${parsed.data.articleId}`);
   }
@@ -1370,6 +1379,7 @@ export async function cancelKitAction(
   revalidatePath(`/kits/${parsed.data.kitId}`);
   revalidatePath("/kits");
   revalidatePath("/inventory");
+  revalidatePath("/floor");
   return { ok: true, error: "", message: "Kit cancelled." };
 }
 

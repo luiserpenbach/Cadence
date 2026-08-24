@@ -218,6 +218,7 @@ export function CreateKitForm({
   configId: string;
 }) {
   const [state, formAction, pending] = useActionState(createKitAction, initialState);
+  useRefreshOnOk(state);
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="articleId" value={articleId} />
@@ -225,6 +226,7 @@ export function CreateKitForm({
       <IdentityField />
       <input name="notes" placeholder="Notes (optional)" className={inputClass} />
       <ActionError state={state} />
+      <ActionMessage state={state} />
       <button type="submit" disabled={pending} className={buttonClass}>
         Kit
       </button>

@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "../../db";
 import * as s from "../../db/schema";
@@ -11,7 +12,9 @@ import {
   reserveLot,
   stockByRevision,
   unreserveLot,
+  workOrderInboundByRevision,
 } from "./inventory";
+import { cancelWorkOrder, completeWorkOrder, createWorkOrder } from "./work-orders";
 
 describe("inventory lots", () => {
   let db: Db;
@@ -137,5 +140,38 @@ describe("inventory lots", () => {
     expect(availableQty(lot)).toBe(3);
     const summary = stockByRevision(db).get(revId)!;
     expect(summary.available).toBe(3);
+  });
+
+  it("counts open and in-progress work orders as inbound, not cancelled or complete", () => {
+    const makeRev = makePart(db, "INJ-100", "A", { sourcing: "make" }).revId;
+    const open = createWorkOrder(db, {
+      partRevisionId: makeRev,
+      qty: 2,
+      by: "shop",
+    });
+    if (!open.ok) throw new Error("wo");
+    expect(workOrderInboundByRevision(db).get(makeRev)).toBe(2);
+
+    db.update(s.workOrders)
+      .set({ status: "in_progress" })
+      .where(eq(s.workOrders.id, open.workOrderId))
+      .run();
+    expect(workOrderInboundByRevision(db).get(makeRev)).toBe(2);
+
+    expect(completeWorkOrder(db, { workOrderId: open.workOrderId, by: "shop" }).ok).toBe(
+      true,
+    );
+    expect(workOrderInboundByRevision(db).get(makeRev) ?? 0).toBe(0);
+
+    const other = createWorkOrder(db, {
+      partRevisionId: makeRev,
+      qty: 1,
+      by: "shop",
+    });
+    if (!other.ok) throw new Error("wo2");
+    expect(cancelWorkOrder(db, { workOrderId: other.workOrderId, by: "shop" }).ok).toBe(
+      true,
+    );
+    expect(workOrderInboundByRevision(db).get(makeRev) ?? 0).toBe(0);
   });
 });

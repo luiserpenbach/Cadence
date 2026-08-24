@@ -1,13 +1,21 @@
+import { eq } from "drizzle-orm";
 import { AppShell, Badge, DataTable, Panel } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
+import { diffAsBuilt } from "../../lib/domain/asbuilt";
 import { getFloorView } from "../../lib/domain/floor";
-import { diffBom } from "../../lib/impact";
+import { diffBom, shortagesForConfig } from "../../lib/impact";
 import { getConfigBundle } from "../../lib/queries";
 import { stockByRevision } from "../../lib/domain/inventory";
 import { findActiveKit } from "../../lib/domain/kits";
-import { CreateKitForm, ShortagePoForm, ShortageWoForm } from "../../components/inventory-forms";
+import {
+  CreateKitForm,
+  KitLifecycleButtons,
+  ReverseAsBuiltButton,
+  ShortagePoForm,
+  ShortageWoForm,
+} from "../../components/inventory-forms";
 import { FloorPicker } from "../../components/pickers";
 import Link from "next/link";
 
@@ -76,13 +84,26 @@ export default async function FloorPage({
   const activeKit = resolvedArticleConfig
     ? findActiveKit(db, view.article.id, resolvedArticleConfig.id)
     : undefined;
-  const floorShorts =
-    articleBundle && resolvedArticleConfig
-      ? [...articleBundle.bom].filter((l) => {
-          const avail = stock.get(l.partRevisionId)?.available ?? 0;
-          return avail < l.qty;
-        })
-      : [];
+  const asBuiltDelta = diffAsBuilt(db, view.article.id);
+  const asBuilt = db
+    .select({
+      id: s.asBuiltLines.id,
+      qty: s.asBuiltLines.qty,
+      serialOrLot: s.asBuiltLines.serialOrLot,
+      partNumber: s.parts.partNumber,
+      revision: s.partRevisions.revision,
+    })
+    .from(s.asBuiltLines)
+    .innerJoin(
+      s.partRevisions,
+      eq(s.asBuiltLines.partRevisionId, s.partRevisions.id),
+    )
+    .innerJoin(s.parts, eq(s.partRevisions.partId, s.parts.id))
+    .where(eq(s.asBuiltLines.articleId, view.article.id))
+    .all();
+  const floorShorts = resolvedArticleConfig
+    ? shortagesForConfig(resolvedArticleConfig.id, 1).filter((row) => row.short > 0)
+    : [];
 
   const changeDelta =
     view.changedSinceLastRun && resolvedArticleConfig && view.lastRun
@@ -239,13 +260,30 @@ export default async function FloorPage({
             <Panel>
               <h2 className="font-display">Kit</h2>
               {activeKit ? (
-                <p className="mt-3 text-sm">
-                  Kit already exists for this article + config:{" "}
-                  <Link className="font-mono underline" href={`/kits/${activeKit.id}`}>
-                    {activeKit.key}
-                  </Link>
-                  <span className="text-[var(--muted)]"> · {activeKit.status}</span>
-                </p>
+                <>
+                  <p className="mt-3 text-sm">
+                    <Link
+                      className="font-mono underline"
+                      href={`/kits/${activeKit.id}`}
+                    >
+                      {activeKit.key}
+                    </Link>
+                    <span className="text-[var(--muted)]">
+                      {" "}
+                      · {activeKit.status} · per-line allocate on kit
+                    </span>
+                  </p>
+                  {activeKit.status === "open" ||
+                  activeKit.status === "reserved" ? (
+                    <div className="mt-3">
+                      <KitLifecycleButtons
+                        kitId={activeKit.id}
+                        articleId={view.article.id}
+                        status={activeKit.status}
+                      />
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <CreateKitForm
                   articleId={view.article.id}
@@ -266,6 +304,68 @@ export default async function FloorPage({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {resolvedArticleConfig ? (
+        <Panel className="mt-5">
+          <h2 className="font-display">As-designed vs as-built</h2>
+          {!asBuiltDelta ? (
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              No covering config and no as-built yet.
+            </p>
+          ) : asBuiltDelta.lines.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              As-built matches the {asBuiltDelta.configKey} BoM.
+            </p>
+          ) : (
+            <div className="mt-3">
+              <DataTable
+                headers={["Delta", "Part", "Rev", "Designed", "Built"]}
+                rows={asBuiltDelta.lines.map((l) => [
+                  <Badge
+                    key="k"
+                    tone={l.kind === "extra" ? "accent" : "warn"}
+                  >
+                    {l.kind.replace("_", " ")}
+                  </Badge>,
+                  <span key="p" className="font-mono text-xs">
+                    {l.partNumber}
+                  </span>,
+                  l.revision,
+                  String(l.designedQty),
+                  String(l.builtQty),
+                ])}
+              />
+            </div>
+          )}
+          {asBuilt.length > 0 ? (
+            <div className="mt-4">
+              <DataTable
+                compact
+                headers={["Part", "Rev", "Qty", "Serial/Lot", ""]}
+                rows={asBuilt.map((l) => [
+                  <span key="p" className="font-mono text-xs">
+                    {l.partNumber}
+                  </span>,
+                  l.revision,
+                  String(l.qty),
+                  l.serialOrLot ? (
+                    <span key="sl" className="font-mono text-xs">
+                      {l.serialOrLot}
+                    </span>
+                  ) : (
+                    "—"
+                  ),
+                  <ReverseAsBuiltButton
+                    key="rev"
+                    asBuiltId={l.id}
+                    articleId={view.article.id}
+                  />,
+                ])}
+              />
+            </div>
+          ) : null}
+        </Panel>
       ) : null}
 
       {standBundle && resolvedStandConfig ? (
