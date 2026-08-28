@@ -51,10 +51,15 @@ function SortHandle({
     >
       {label}
       <span
-        className={`font-mono text-[9px] ${active ? "text-[var(--ink)]" : "text-[var(--muted)]"}`}
+        className="inline-flex flex-col leading-[0.65] font-mono text-[8px]"
         aria-hidden
       >
-        {active ? (dir === "asc" ? "▴" : "▾") : "↕"}
+        <span className={active && dir === "asc" ? "text-[var(--ink)]" : "opacity-30"}>
+          ▴
+        </span>
+        <span className={active && dir === "desc" ? "text-[var(--ink)]" : "opacity-30"}>
+          ▾
+        </span>
       </span>
     </button>
   );
