@@ -71,6 +71,13 @@
       "when": 1786632369820,
       "tag": "0009_workflow_ops",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1787927502573,
+      "tag": "0010_catalog_settings",
+      "breakpoints": true
     }
   ]
 }

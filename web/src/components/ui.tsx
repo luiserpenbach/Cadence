@@ -15,22 +15,27 @@ export function AppShell({
   children,
   title,
   subtitle,
+  actions,
 }: {
   children: React.ReactNode;
   title: string;
   subtitle?: string;
+  actions?: React.ReactNode;
 }) {
   return (
     <div className="min-h-screen" suppressHydrationWarning>
       <AppHeader />
       <main className="mx-auto max-w-7xl px-5 py-5">
-        <div className="mb-4 border-b border-[var(--line)] pb-3">
-          <h1 className="font-display text-[var(--ink)]">{title}</h1>
-          {subtitle ? (
-            <p className="mt-1 max-w-3xl text-[13px] text-[var(--muted)]">
-              {subtitle}
-            </p>
-          ) : null}
+        <div className="mb-4 flex items-end justify-between gap-4 border-b border-[var(--line)] pb-3">
+          <div>
+            <h1 className="font-display text-[var(--ink)]">{title}</h1>
+            {subtitle ? (
+              <p className="mt-1 max-w-3xl text-[13px] text-[var(--muted)]">
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
+          {actions ? <div className="shrink-0 pb-0.5">{actions}</div> : null}
         </div>
         {children}
       </main>

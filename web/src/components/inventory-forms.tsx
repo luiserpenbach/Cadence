@@ -392,6 +392,7 @@ export function ImportBomForm({ configId }: { configId: string }) {
 
 export function EditPartForm({
   part,
+  categories,
 }: {
   part: {
     id: string;
@@ -401,14 +402,29 @@ export function EditPartForm({
     kind: string;
     description: string;
   };
+  categories: string[];
 }) {
   const [state, formAction, pending] = useActionState(updatePartAction, initialState);
   useRefreshOnOk(state);
+  const options = categories.includes(part.category)
+    ? categories
+    : [part.category, ...categories];
   return (
     <form action={formAction} className="mt-3 space-y-2">
       <input type="hidden" name="partId" value={part.id} />
       <input name="name" required defaultValue={part.name} className={inputClass} />
-      <input name="category" required defaultValue={part.category} className={inputClass} />
+      <select
+        name="category"
+        required
+        defaultValue={part.category}
+        className={inputClass}
+      >
+        {options.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
       <textarea
         name="description"
         defaultValue={part.description}

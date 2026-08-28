@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "../../db";
 import * as s from "../../db/schema";
 import { id } from "../id";
+import { categoryNotAllowed } from "./catalog-settings";
 
 export type AuthoringResult<T = object> =
   | ({ ok: true } & T)
@@ -27,6 +28,9 @@ export function createPart(
   if (duplicate) {
     return { ok: false, error: `Part number "${input.partNumber}" already exists.` };
   }
+
+  const categoryError = categoryNotAllowed(db, input.category);
+  if (categoryError) return { ok: false, error: categoryError };
 
   const partId = id("part");
   db.transaction((tx) => {
@@ -105,6 +109,9 @@ export function updatePart(
     .get();
   if (!part) return { ok: false, error: "Part not found." };
   if (!input.name.trim()) return { ok: false, error: "Name is required." };
+
+  const categoryError = categoryNotAllowed(db, input.category, part.category);
+  if (categoryError) return { ok: false, error: categoryError };
 
   db.update(s.parts)
     .set({

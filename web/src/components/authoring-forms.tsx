@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
   addLinkAttachmentAction,
   addPartRevisionAction,
@@ -20,6 +20,7 @@ import {
   uploadFileAttachmentAction,
   type ActionState,
 } from "../lib/actions";
+import { nextPartNumber, type CatalogPrefix } from "../lib/catalog-format";
 import { PartRevPicker, useRefreshOnOk } from "./pickers";
 import { IdentityField } from "./identity";
 import { buttonClass, compactInputClass, inputClass, subtleButtonClass } from "./ui";
@@ -44,28 +45,126 @@ function ActionMessage({ state }: { state: ActionState }) {
   );
 }
 
-export function NewPartForm() {
+export function NewPartForm({
+  categories,
+  prefixes,
+  partNumbers,
+}: {
+  categories: string[];
+  prefixes: CatalogPrefix[];
+  partNumbers: string[];
+}) {
   const [state, formAction, pending] = useActionState(
     createPartAction,
     initialState,
   );
+  const [partNumber, setPartNumber] = useState("");
+  const [prefixOpen, setPrefixOpen] = useState(false);
+  const prefixRef = useRef<HTMLDivElement>(null);
+  useRefreshOnOk(state);
+
+  useEffect(() => {
+    if (!prefixOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      if (prefixRef.current && !prefixRef.current.contains(e.target as Node)) {
+        setPrefixOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setPrefixOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [prefixOpen]);
+
   return (
     <form action={formAction} className="mt-3 space-y-2">
-      <input
-        name="partNumber"
-        required
-        placeholder="Part number"
-        className={`font-mono ${inputClass}`}
-      />
+      <div className="relative" ref={prefixRef}>
+        <div className="flex">
+          <input
+            name="partNumber"
+            required
+            value={partNumber}
+            onChange={(e) => setPartNumber(e.target.value)}
+            placeholder="Part number"
+            className={`font-mono ${inputClass} ${prefixes.length > 0 ? "border-r-0" : ""}`}
+          />
+          {prefixes.length > 0 ? (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center border border-[var(--line)] bg-[var(--control)] px-2 text-[var(--muted)] hover:bg-[var(--panel-strong)] hover:text-[var(--ink)]"
+              aria-label="Generate part number"
+              aria-expanded={prefixOpen}
+              aria-haspopup="menu"
+              onClick={() => setPrefixOpen((open) => !open)}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden
+              >
+                <path d="M6.2 1.5 4.5 14.5M11.5 1.5 9.8 14.5M1.5 6h13M1.5 10h13" />
+              </svg>
+            </button>
+          ) : null}
+        </div>
+        {prefixOpen && prefixes.length > 0 ? (
+          <ul
+            role="menu"
+            className="absolute right-0 z-20 mt-px min-w-full border border-[var(--line)] bg-[var(--panel)] py-1 shadow-sm"
+          >
+            {prefixes.map((p) => {
+              const next = nextPartNumber(partNumbers, p.prefix, p.length);
+              return (
+                <li key={p.prefix}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-baseline justify-between gap-3 px-2.5 py-1.5 text-left text-sm hover:bg-[var(--panel-strong)]"
+                    onClick={() => {
+                      setPartNumber(next);
+                      setPrefixOpen(false);
+                    }}
+                  >
+                    <span className="font-mono text-xs">{p.prefix}</span>
+                    <span className="font-mono text-[11px] text-[var(--muted)]">
+                      {next}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+      </div>
       <input name="name" required placeholder="Name" className={inputClass} />
       <div className="flex gap-2">
-        <input
-          name="category"
-          required
-          defaultValue="hardware"
-          placeholder="Category"
-          className={inputClass}
-        />
+        {categories.length > 0 ? (
+          <select
+            name="category"
+            required
+            defaultValue={categories[0]}
+            className={inputClass}
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="flex-1 text-xs text-[var(--muted)]">
+            Set part categories in Catalog settings first.
+          </p>
+        )}
         <input
           name="revision"
           required
@@ -91,7 +190,11 @@ export function NewPartForm() {
         className={`min-h-16 ${inputClass}`}
       />
       <ActionError state={state} />
-      <button type="submit" disabled={pending} className={buttonClass}>
+      <button
+        type="submit"
+        disabled={pending || categories.length === 0}
+        className={buttonClass}
+      >
         Create part
       </button>
     </form>

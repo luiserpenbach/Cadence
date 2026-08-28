@@ -542,6 +542,14 @@ export const attachments = sqliteTable("attachments", {
     .default(sql`(datetime('now'))`),
 });
 
+// Singleton catalog presets: part categories and part-number prefixes.
+// JSON arrays — edited only on /catalog/settings.
+export const catalogSettings = sqliteTable("catalog_settings", {
+  id: text("id").primaryKey(),
+  categoriesJson: text("categories_json").notNull().default("[]"),
+  prefixesJson: text("prefixes_json").notNull().default("[]"),
+});
+
 export const partsRelations = relations(parts, ({ many }) => ({
   revisions: many(partRevisions),
 }));
