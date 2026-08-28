@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
+import { AppShell, Panel } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -9,6 +8,7 @@ import {
   NewPartForm,
   NewRevisionForm,
 } from "../../components/authoring-forms";
+import { CatalogTable } from "../../components/catalog-table";
 import { ImportCatalogForm } from "../../components/inventory-forms";
 import { stockByRevision } from "../../lib/domain/inventory";
 
@@ -21,7 +21,7 @@ export default async function CatalogPage({
 }) {
   ensureAppData();
   const params = await searchParams;
-  const q = (typeof params.q === "string" ? params.q : "").trim().toLowerCase();
+  const q = typeof params.q === "string" ? params.q : "";
   const db = getDb();
   const parts = db.select().from(s.parts).all();
   const revs = db.select().from(s.partRevisions).all();
@@ -33,13 +33,29 @@ export default async function CatalogPage({
   }
   const stock = stockByRevision(db);
 
-  const filtered = parts
-    .filter((p) => {
-      if (!q) return true;
-      const hay = `${p.partNumber} ${p.name} ${p.category} ${p.sourcing} ${p.kind} ${p.description}`.toLowerCase();
-      return hay.includes(q);
-    })
-    .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+  const catalogRows = parts
+    .slice()
+    .sort((a, b) => a.partNumber.localeCompare(b.partNumber))
+    .map((p) => {
+      const partRevs = (revsByPart.get(p.id) ?? []).sort((a, b) =>
+        a.revision.localeCompare(b.revision),
+      );
+      const onHand = partRevs.reduce(
+        (sum, r) => sum + (stock.get(r.id)?.onHand ?? 0),
+        0,
+      );
+      return {
+        id: p.id,
+        partNumber: p.partNumber,
+        name: p.name,
+        category: p.category,
+        sourcing: p.sourcing,
+        kind: p.kind,
+        description: p.description,
+        revisions: partRevs.map((r) => r.revision),
+        onHand,
+      };
+    });
 
   const partRevOptions = db
     .select({
@@ -58,60 +74,7 @@ export default async function CatalogPage({
     <AppShell title="Catalog">
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <form method="get" className="mb-4 flex gap-2">
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="Search part number, name, category…"
-              className={inputClass}
-            />
-            <button
-              type="submit"
-              className={buttonClass}
-            >
-              Search
-            </button>
-          </form>
-          <DataTable
-            empty="No parts match — create one to the right."
-            headers={["Part", "Name", "Revs", "Type", "Sourcing", "On hand"]}
-            rows={filtered.map((p) => {
-              const partRevs = (revsByPart.get(p.id) ?? []).sort((a, b) =>
-                a.revision.localeCompare(b.revision),
-              );
-              const onHand = partRevs.reduce(
-                (sum, r) => sum + (stock.get(r.id)?.onHand ?? 0),
-                0,
-              );
-              return [
-                <Link
-                  key="pn"
-                  href={`/catalog/${p.id}`}
-                  className="font-mono text-xs underline-offset-2 hover:underline"
-                >
-                  {p.partNumber}
-                </Link>,
-                p.name,
-                <span key="r" className="flex flex-wrap gap-1">
-                  {partRevs.map((r) => (
-                    <Badge key={r.id} tone="accent">
-                      {r.revision}
-                    </Badge>
-                  ))}
-                </span>,
-                <span key="t" className="text-xs">
-                  {p.category}
-                  {p.kind === "assembly" ? (
-                    <Badge tone="warn"> assembly</Badge>
-                  ) : null}
-                </span>,
-                <Badge key="src" tone={p.sourcing === "make" ? "accent" : "neutral"}>
-                  {p.sourcing}
-                </Badge>,
-                String(onHand),
-              ];
-            })}
-          />
+          <CatalogTable parts={catalogRows} initialQuery={q} />
         </Panel>
 
         <div className="space-y-5">
