@@ -1,4 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+import fs from "node:fs";
+import path from "node:path";
 import type { Db } from "../../db";
 import * as s from "../../db/schema";
 import { id } from "../id";
@@ -124,6 +126,158 @@ export function updatePart(
     .where(eq(s.parts.id, input.partId))
     .run();
   return { ok: true };
+}
+
+export function deleteParts(
+  db: Db,
+  partIds: string[],
+  storageDir?: string,
+): AuthoringResult<{
+  deleted: string[];
+  skipped: Array<{ partNumber: string; error: string }>;
+}> {
+  const unique = [...new Set(partIds.map((id) => id.trim()).filter(Boolean))];
+  if (unique.length === 0) return { ok: false, error: "No parts selected." };
+
+  const deleted: string[] = [];
+  const skipped: Array<{ partNumber: string; error: string }> = [];
+
+  for (const partId of unique) {
+    const part = db
+      .select()
+      .from(s.parts)
+      .where(eq(s.parts.id, partId))
+      .get();
+    if (!part) {
+      skipped.push({ partNumber: partId, error: "Part not found." });
+      continue;
+    }
+    const blocker = partDeleteBlocker(db, partId);
+    if (blocker) {
+      skipped.push({ partNumber: part.partNumber, error: blocker });
+      continue;
+    }
+
+    const files = db
+      .select()
+      .from(s.attachments)
+      .where(
+        and(eq(s.attachments.entityType, "part"), eq(s.attachments.entityId, partId)),
+      )
+      .all()
+      .filter((a) => a.kind === "file");
+
+    db.transaction((tx) => {
+      tx.delete(s.attachments)
+        .where(
+          and(
+            eq(s.attachments.entityType, "part"),
+            eq(s.attachments.entityId, partId),
+          ),
+        )
+        .run();
+      tx.delete(s.partRevisions)
+        .where(eq(s.partRevisions.partId, partId))
+        .run();
+      tx.delete(s.parts).where(eq(s.parts.id, partId)).run();
+    });
+
+    if (storageDir) {
+      for (const file of files) {
+        try {
+          fs.unlinkSync(path.join(storageDir, file.id));
+        } catch {
+          // row removal is the source of truth
+        }
+      }
+    }
+    deleted.push(part.partNumber);
+  }
+
+  if (deleted.length === 0) {
+    return {
+      ok: false,
+      error: skipped
+        .map((row) => `${row.partNumber}: ${row.error}`)
+        .join(" "),
+    };
+  }
+  return { ok: true, deleted, skipped };
+}
+
+function partDeleteBlocker(db: Db, partId: string): string | null {
+  const revIds = db
+    .select({ id: s.partRevisions.id })
+    .from(s.partRevisions)
+    .where(eq(s.partRevisions.partId, partId))
+    .all()
+    .map((r) => r.id);
+  if (revIds.length === 0) return null;
+
+  if (
+    db
+      .select({ id: s.configBomLines.id })
+      .from(s.configBomLines)
+      .where(inArray(s.configBomLines.partRevisionId, revIds))
+      .get()
+  ) {
+    return "used in a configuration BOM";
+  }
+  if (
+    db
+      .select({ id: s.configBomAlternates.id })
+      .from(s.configBomAlternates)
+      .where(inArray(s.configBomAlternates.partRevisionId, revIds))
+      .get()
+  ) {
+    return "used as a BOM alternate";
+  }
+  if (
+    db
+      .select({ id: s.asBuiltLines.id })
+      .from(s.asBuiltLines)
+      .where(inArray(s.asBuiltLines.partRevisionId, revIds))
+      .get()
+  ) {
+    return "recorded on an as-built";
+  }
+  if (
+    db
+      .select({ id: s.inventoryLots.id })
+      .from(s.inventoryLots)
+      .where(inArray(s.inventoryLots.partRevisionId, revIds))
+      .get()
+  ) {
+    return "has inventory lots";
+  }
+  if (
+    db
+      .select({ id: s.kitLines.id })
+      .from(s.kitLines)
+      .where(inArray(s.kitLines.partRevisionId, revIds))
+      .get()
+  ) {
+    return "used on a kit";
+  }
+  if (
+    db
+      .select({ id: s.workOrders.id })
+      .from(s.workOrders)
+      .where(inArray(s.workOrders.partRevisionId, revIds))
+      .get()
+  ) {
+    return "has work orders";
+  }
+  if (
+    db
+      .select({ id: s.purchaseOrderLines.id })
+      .from(s.purchaseOrderLines)
+      .where(inArray(s.purchaseOrderLines.partRevisionId, revIds))
+      .get()
+  ) {
+    return "used on a purchase order";
+  }
+  return null;
 }
 
 export function createArticle(

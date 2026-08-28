@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { deletePartsAction, type ActionState } from "../lib/actions";
 import { matchCatalogQuery } from "../lib/catalog-search";
+import { useRefreshOnOk } from "./pickers";
 import { Badge, inputClass } from "./ui";
 
 export type CatalogTableRow = {
@@ -113,6 +115,19 @@ export function CatalogTable({
   const allVisibleSelected =
     visible.length > 0 && visible.every((p) => selected.has(p.id));
   const someVisibleSelected = visible.some((p) => selected.has(p.id));
+  const liveSelected = useMemo(() => {
+    const ids = new Set(parts.map((p) => p.id));
+    return [...selected].filter((id) => ids.has(id));
+  }, [parts, selected]);
+  const selectedRows = liveSelected
+    .map((id) => parts.find((p) => p.id === id))
+    .filter((p): p is CatalogTableRow => Boolean(p));
+
+  const [state, formAction, pending] = useActionState(
+    deletePartsAction,
+    { ok: false, error: "" } satisfies ActionState,
+  );
+  useRefreshOnOk(state);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -159,10 +174,44 @@ export function CatalogTable({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search part number, name, category…"
-        className={`mb-4 ${inputClass}`}
+        className={`mb-3 ${inputClass}`}
         autoComplete="off"
         aria-label="Search catalog"
       />
+      {liveSelected.length > 0 ? (
+        <form
+          action={formAction}
+          className="mb-3 flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            const names = selectedRows.map((p) => p.partNumber);
+            const preview =
+              names.length <= 8
+                ? names.join("\n")
+                : `${names.slice(0, 8).join("\n")}\nand ${names.length - 8} more`;
+            const noun = names.length === 1 ? "part" : "parts";
+            if (
+              !window.confirm(
+                `Delete ${names.length} ${noun}?\n\n${preview}\n\nThis cannot be undone.`,
+              )
+            ) {
+              e.preventDefault();
+            }
+          }}
+        >
+          {liveSelected.map((id) => (
+            <input key={id} type="hidden" name="partId" value={id} />
+          ))}
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-none border border-[var(--danger)] bg-transparent px-3 py-1.5 text-sm text-[var(--danger)] hover:bg-[color-mix(in_oklab,var(--danger)_10%,transparent)] disabled:opacity-50"
+          >
+            Delete {liveSelected.length} {liveSelected.length === 1 ? "part" : "parts"}
+          </button>
+          {state.error ? <p className="msg-error">{state.error}</p> : null}
+          {state.ok && state.message ? <p className="msg-ok">{state.message}</p> : null}
+        </form>
+      ) : null}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-left text-sm">
           <thead>
