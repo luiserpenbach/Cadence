@@ -82,7 +82,7 @@ export function IdentityField({
       required={hidden ? false : required}
       className={hidden ? undefined : cls}
       aria-label={hidden ? undefined : "Identity"}
-      autoComplete="username"
+      autoComplete={hidden ? "off" : "name"}
     />
   );
 }

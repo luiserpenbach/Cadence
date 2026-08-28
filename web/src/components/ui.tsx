@@ -21,7 +21,7 @@ export function AppShell({
   subtitle?: string;
 }) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" suppressHydrationWarning>
       <AppHeader />
       <main className="mx-auto max-w-7xl px-5 py-5">
         <div className="mb-4 border-b border-[var(--line)] pb-3">
