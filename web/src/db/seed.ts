@@ -121,6 +121,22 @@ export function seedIfEmpty() {
     }
   }
 
+  const categories = [
+    ...new Set<string>([...partDefs.map((p) => p.category), "hardware"]),
+  ].sort((a, b) => a.localeCompare(b));
+  db.insert(s.catalogSettings)
+    .values({
+      id: "default",
+      categoriesJson: JSON.stringify(categories),
+      prefixesJson: JSON.stringify([
+        { prefix: "PN-", length: 4 },
+        { prefix: "VLV-", length: 3 },
+        { prefix: "ORF-", length: 3 },
+        { prefix: "SNS-", length: 3 },
+      ]),
+    })
+    .run();
+
   // Sample link attachment: valve drawing reference
   db.insert(s.attachments)
     .values({

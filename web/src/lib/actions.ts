@@ -75,6 +75,7 @@ import {
 } from "./domain/kits";
 import { importBomCsv } from "./domain/bom-csv";
 import { importCatalogCsv } from "./domain/catalog-csv";
+import { saveCatalogSettings } from "./domain/catalog-settings";
 import {
   cancelWorkOrder,
   completeWorkOrder,
@@ -448,6 +449,25 @@ export async function createPartAction(
   if (!result.ok) return fail(result.error);
   revalidatePath("/catalog");
   return { ok: true, error: "" };
+}
+
+export async function saveCatalogSettingsAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const categories = formData.getAll("category").map((v) => String(v));
+  const prefixValues = formData.getAll("prefix");
+  const lengthValues = formData.getAll("length");
+  const prefixes = prefixValues.map((prefix, i) => ({
+    prefix: String(prefix),
+    length: Number(lengthValues[i]),
+  }));
+  const result = saveCatalogSettings(getDb(), { categories, prefixes });
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/catalog");
+  revalidatePath("/catalog/settings");
+  return { ok: true, error: "", message: "Catalog settings saved." };
 }
 
 const attachmentTarget = z.object({

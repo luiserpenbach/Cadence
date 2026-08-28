@@ -3,6 +3,7 @@ import type { Db } from "../../db";
 import * as s from "../../db/schema";
 import { createTestDb } from "../../test/db";
 import { importCatalogCsv, parseCatalogCsv } from "./catalog-csv";
+import { saveCatalogSettings } from "./catalog-settings";
 
 describe("catalog CSV", () => {
   it("parses header rows and defaults", () => {
@@ -53,5 +54,18 @@ describe("importCatalogCsv", () => {
     expect(again.added).toBe(1);
     expect(again.skipped[0]).toContain("INJ-100");
     expect(db.select().from(s.parts).all()).toHaveLength(3);
+  });
+
+  it("skips rows whose category is not in catalog settings", () => {
+    saveCatalogSettings(db, { categories: ["valve"], prefixes: [] });
+    const result = importCatalogCsv(
+      db,
+      "part,name,category\nVLV-001,Valve,valve\nINJ-100,Injector,injector",
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.added).toBe(1);
+    expect(result.skipped[0]).toMatch(/INJ-100/);
+    expect(result.skipped[0]).toMatch(/catalog list/i);
   });
 });

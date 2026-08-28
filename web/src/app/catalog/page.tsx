@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { AppShell, Badge, DataTable, Panel, buttonClass, inputClass } from "../../components/ui";
+import { AppShell, Panel, linkClass } from "../../components/ui";
 import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
@@ -9,10 +9,30 @@ import {
   NewPartForm,
   NewRevisionForm,
 } from "../../components/authoring-forms";
+import { CatalogTable } from "../../components/catalog-table";
 import { ImportCatalogForm } from "../../components/inventory-forms";
+import { latestRevision } from "../../lib/catalog-format";
+import { ensureCatalogSettings } from "../../lib/domain/catalog-settings";
 import { stockByRevision } from "../../lib/domain/inventory";
 
 export const dynamic = "force-dynamic";
+
+function SettingsIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      aria-hidden
+    >
+      <circle cx="8" cy="8" r="2.2" />
+      <path d="M8 1.6v1.8M8 12.6v1.8M1.6 8h1.8M12.6 8h1.8M3.3 3.3l1.3 1.3M11.4 11.4l1.3 1.3M12.7 3.3l-1.3 1.3M4.6 11.4l-1.3 1.3" />
+    </svg>
+  );
+}
 
 export default async function CatalogPage({
   searchParams,
@@ -21,8 +41,9 @@ export default async function CatalogPage({
 }) {
   ensureAppData();
   const params = await searchParams;
-  const q = (typeof params.q === "string" ? params.q : "").trim().toLowerCase();
+  const q = typeof params.q === "string" ? params.q : "";
   const db = getDb();
+  const settings = ensureCatalogSettings(db);
   const parts = db.select().from(s.parts).all();
   const revs = db.select().from(s.partRevisions).all();
   const revsByPart = new Map<string, typeof revs>();
@@ -33,13 +54,29 @@ export default async function CatalogPage({
   }
   const stock = stockByRevision(db);
 
-  const filtered = parts
-    .filter((p) => {
-      if (!q) return true;
-      const hay = `${p.partNumber} ${p.name} ${p.category} ${p.sourcing} ${p.kind} ${p.description}`.toLowerCase();
-      return hay.includes(q);
-    })
-    .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+  const catalogRows = parts
+    .slice()
+    .sort((a, b) => a.partNumber.localeCompare(b.partNumber))
+    .map((p) => {
+      const partRevs = (revsByPart.get(p.id) ?? []).sort((a, b) =>
+        a.revision.localeCompare(b.revision),
+      );
+      const onHand = partRevs.reduce(
+        (sum, r) => sum + (stock.get(r.id)?.onHand ?? 0),
+        0,
+      );
+      return {
+        id: p.id,
+        partNumber: p.partNumber,
+        name: p.name,
+        category: p.category,
+        sourcing: p.sourcing,
+        kind: p.kind,
+        description: p.description,
+        latestRev: latestRevision(partRevs.map((r) => r.revision)) ?? "",
+        onHand,
+      };
+    });
 
   const partRevOptions = db
     .select({
@@ -55,76 +92,32 @@ export default async function CatalogPage({
     );
 
   return (
-    <AppShell title="Catalog">
+    <AppShell
+      title="Catalog"
+      actions={
+        <Link
+          href="/catalog/settings"
+          className={`${linkClass} inline-flex items-center gap-1.5`}
+        >
+          <SettingsIcon />
+          Settings
+        </Link>
+      }
+    >
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel className="lg:col-span-2">
-          <form method="get" className="mb-4 flex gap-2">
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="Search part number, name, category…"
-              className={inputClass}
-            />
-            <button
-              type="submit"
-              className={buttonClass}
-            >
-              Search
-            </button>
-          </form>
-          <DataTable
-            empty="No parts match — create one to the right."
-            headers={["Part", "Name", "Revs", "Type", "Sourcing", "On hand"]}
-            rows={filtered.map((p) => {
-              const partRevs = (revsByPart.get(p.id) ?? []).sort((a, b) =>
-                a.revision.localeCompare(b.revision),
-              );
-              const onHand = partRevs.reduce(
-                (sum, r) => sum + (stock.get(r.id)?.onHand ?? 0),
-                0,
-              );
-              return [
-                <Link
-                  key="pn"
-                  href={`/catalog/${p.id}`}
-                  className="font-mono text-xs underline-offset-2 hover:underline"
-                >
-                  {p.partNumber}
-                </Link>,
-                p.name,
-                <span key="r" className="flex flex-wrap gap-1">
-                  {partRevs.map((r) => (
-                    <Badge key={r.id} tone="accent">
-                      {r.revision}
-                    </Badge>
-                  ))}
-                </span>,
-                <span key="t" className="text-xs">
-                  {p.category}
-                  {p.kind === "assembly" ? (
-                    <Badge tone="warn"> assembly</Badge>
-                  ) : null}
-                </span>,
-                <Badge key="src" tone={p.sourcing === "make" ? "accent" : "neutral"}>
-                  {p.sourcing}
-                </Badge>,
-                String(onHand),
-              ];
-            })}
-          />
+          <CatalogTable parts={catalogRows} initialQuery={q} />
         </Panel>
 
         <div className="space-y-5">
           <Panel>
             <h2 className="font-display">New part</h2>
-            <NewPartForm />
-          </Panel>
-          <Panel>
-            <h2 className="font-display">Bulk import</h2>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              Header: part, name, rev, category, sourcing, kind, description
-            </p>
-            <ImportCatalogForm />
+            <NewPartForm
+              key={parts.length}
+              categories={settings.categories}
+              prefixes={settings.prefixes}
+              partNumbers={parts.map((p) => p.partNumber)}
+            />
           </Panel>
           <Panel>
             <h2 className="font-display">New revision</h2>
@@ -143,6 +136,13 @@ export default async function CatalogPage({
                 label: `${p.partNumber} @ ${p.revision}`,
               }))}
             />
+          </Panel>
+          <Panel>
+            <h2 className="font-display">Bulk import</h2>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Header: part, name, rev, category, sourcing, kind, description
+            </p>
+            <ImportCatalogForm />
           </Panel>
         </div>
       </div>

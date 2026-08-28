@@ -9,6 +9,7 @@ import { AttachmentsPanel } from "../../../components/attachments-panel";
 import { NewRevisionForm } from "../../../components/authoring-forms";
 import { EditPartForm } from "../../../components/inventory-forms";
 import { stockByRevision } from "../../../lib/domain/inventory";
+import { ensureCatalogSettings } from "../../../lib/domain/catalog-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,7 @@ export default async function PartDetailPage({
       : [];
 
   const stock = stockByRevision(db);
+  const settings = ensureCatalogSettings(db);
 
   return (
     <AppShell title={part.partNumber} subtitle={part.name}>
@@ -128,7 +130,7 @@ export default async function PartDetailPage({
         <div className="space-y-5">
           <Panel>
             <h2 className="font-display">Edit part</h2>
-            <EditPartForm part={part} />
+            <EditPartForm part={part} categories={settings.categories} />
           </Panel>
 
           <Panel>
