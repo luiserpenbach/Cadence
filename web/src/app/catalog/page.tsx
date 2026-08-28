@@ -100,7 +100,7 @@ export default async function CatalogPage({
         <Link
           href="/catalog/settings"
           aria-label="Catalog settings"
-          className="inline-flex items-center justify-center p-1 text-[var(--muted)] hover:text-[var(--ink)]"
+          className="inline-flex items-center justify-center p-1 text-[var(--ink)] hover:opacity-70"
         >
           <SettingsIcon />
         </Link>
