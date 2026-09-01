@@ -84,20 +84,34 @@ function writeCollapsed(value: boolean) {
   emitNav();
 }
 
+let cachedSections: SectionState | null = null;
+let cachedRaw: string | null = null;
+
 function readSections(): SectionState {
   try {
     const raw = localStorage.getItem(SECTIONS_KEY);
-    if (!raw) return defaultSections;
+    if (!raw) {
+      if (cachedSections && cachedRaw === null) return cachedSections;
+      cachedRaw = null;
+      cachedSections = defaultSections;
+      return defaultSections;
+    }
+    if (raw === cachedRaw && cachedSections) return cachedSections;
+    cachedRaw = raw;
     const parsed = JSON.parse(raw) as Partial<SectionState>;
-    return { ...defaultSections, ...parsed };
+    cachedSections = { ...defaultSections, ...parsed };
+    return cachedSections;
   } catch {
+    if (cachedSections) return cachedSections;
     return defaultSections;
   }
 }
 
 function writeSections(next: SectionState) {
+  cachedSections = next;
+  cachedRaw = JSON.stringify(next);
   try {
-    localStorage.setItem(SECTIONS_KEY, JSON.stringify(next));
+    localStorage.setItem(SECTIONS_KEY, cachedRaw);
   } catch {
     /* private mode */
   }
@@ -256,14 +270,14 @@ export function AppSidebar() {
   return (
     <aside
       className={`sticky top-0 z-40 flex h-screen shrink-0 flex-col border-r border-[var(--line)] border-l-[3px] border-l-[var(--ink)] bg-[var(--panel)] ${
-        collapsed ? "w-12" : "w-52"
+        collapsed ? "w-14" : "w-52"
       }`}
     >
       <div className="flex h-11 shrink-0 items-center border-b border-[var(--line)]">
         <Link
           href="/"
           className={`flex min-w-0 items-center gap-2 text-[var(--ink)] ${
-            collapsed ? "w-full justify-center px-0" : "px-3"
+            collapsed ? "h-11 flex-1 justify-center px-0" : "flex-1 px-3"
           }`}
         >
           <span aria-hidden className="block h-2.5 w-2.5 shrink-0 bg-[var(--ink)]" />
@@ -273,9 +287,20 @@ export function AppSidebar() {
             <span className="font-logo">cadence</span>
           )}
         </Link>
+        <button
+          type="button"
+          className={`inline-flex h-11 items-center justify-center text-[var(--muted)] hover:text-[var(--ink)] ${
+            collapsed ? "flex-1" : "w-9"
+          }`}
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+          title={collapsed ? "Expand navigation" : "Collapse navigation"}
+          onClick={() => writeCollapsed(!collapsed)}
+        >
+          <CollapseIcon expanded={!collapsed} />
+        </button>
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto py-2">
+      <nav className="min-h-0 flex-1 overflow-y-auto py-2 pb-14">
         <NavLink
           href={dashboard.href}
           label={dashboard.label}
@@ -332,24 +357,6 @@ export function AppSidebar() {
           );
         })}
       </nav>
-
-      <div className="shrink-0 border-t border-[var(--line)]">
-        <button
-          type="button"
-          className={`flex h-11 w-full items-center text-[var(--muted)] hover:text-[var(--ink)] ${
-            collapsed ? "justify-center" : "justify-between px-3"
-          }`}
-          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-          onClick={() => writeCollapsed(!collapsed)}
-        >
-          {collapsed ? null : (
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em]">
-              Collapse
-            </span>
-          )}
-          <CollapseIcon expanded={!collapsed} />
-        </button>
-      </div>
     </aside>
   );
 }
