@@ -1,4 +1,5 @@
-import { AppHeader } from "./header";
+import { AppSidebar } from "./header";
+import { IdentityChip } from "./identity";
 
 export const inputClass =
   "w-full rounded-none border border-[var(--line)] bg-[var(--control)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--ink)]";
@@ -23,22 +24,27 @@ export function AppShell({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen" suppressHydrationWarning>
-      <AppHeader />
-      <main className="mx-auto max-w-7xl px-5 py-5">
-        <div className="mb-4 flex items-end justify-between gap-4 border-b border-[var(--line)] pb-3">
-          <div>
-            <h1 className="font-display text-[var(--ink)]">{title}</h1>
-            {subtitle ? (
-              <p className="mt-1 max-w-3xl text-[13px] text-[var(--muted)]">
-                {subtitle}
-              </p>
-            ) : null}
-          </div>
-          {actions ? <div className="shrink-0 pb-0.5">{actions}</div> : null}
+    <div className="flex min-h-screen" suppressHydrationWarning>
+      <AppSidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="sticky top-0 z-30 flex h-11 shrink-0 items-center justify-end border-b border-[var(--line)] bg-[var(--panel)] px-5">
+          <IdentityChip />
         </div>
-        {children}
-      </main>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-5">
+          <div className="mb-4 flex items-end justify-between gap-4 border-b border-[var(--line)] pb-3">
+            <div>
+              <h1 className="font-display text-[var(--ink)]">{title}</h1>
+              {subtitle ? (
+                <p className="mt-1 max-w-3xl text-[13px] text-[var(--muted)]">
+                  {subtitle}
+                </p>
+              ) : null}
+            </div>
+            {actions ? <div className="shrink-0 pb-0.5">{actions}</div> : null}
+          </div>
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

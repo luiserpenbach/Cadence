@@ -89,7 +89,7 @@ export function IdentityField({
 
 export function IdentityChip() {
   return (
-    <label className="ml-2 flex shrink-0 items-center gap-1.5 py-2">
+    <label className="flex shrink-0 items-center gap-1.5">
       <span className="hidden font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--muted)] sm:inline">
         You
       </span>
