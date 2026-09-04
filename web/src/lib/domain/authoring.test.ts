@@ -9,7 +9,9 @@ import {
   createPart,
   createStand,
   addPartRevision,
+  deleteParts,
 } from "./authoring";
+import { addBomLine } from "./config-edit";
 
 describe("catalog authoring", () => {
   let db: Db;
@@ -101,5 +103,64 @@ describe("catalog authoring", () => {
         .where(eq(s.configBomLines.configId, result.configId))
         .all(),
     ).toHaveLength(0);
+  });
+
+  it("deletes unused parts and keeps referenced ones", () => {
+    const unused = createPart(db, {
+      partNumber: "SPARE-001",
+      name: "Spare",
+      category: "c",
+      revision: "A",
+    });
+    const used = createPart(db, {
+      partNumber: "VLV-001",
+      name: "Valve",
+      category: "c",
+      revision: "A",
+    });
+    if (!unused.ok || !used.ok) throw new Error("setup");
+    const rev = db
+      .select()
+      .from(s.partRevisions)
+      .where(eq(s.partRevisions.partId, used.partId))
+      .get()!;
+    const config = createConfig(db, {
+      key: "CFG-DEL",
+      name: "Del",
+      kind: "article",
+      riskClass: "R1",
+    });
+    if (!config.ok) throw new Error("setup");
+    expect(
+      addBomLine(db, {
+        configId: config.configId,
+        partRevisionId: rev.id,
+        qty: 1,
+        findNumber: "1",
+      }).ok,
+    ).toBe(true);
+
+    const result = deleteParts(db, [unused.partId, used.partId]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.deleted).toEqual(["SPARE-001"]);
+    expect(result.skipped[0]?.partNumber).toBe("VLV-001");
+    expect(result.skipped[0]?.error).toMatch(/BOM/i);
+    expect(db.select().from(s.parts).all().map((p) => p.partNumber)).toEqual([
+      "VLV-001",
+    ]);
+  });
+
+  it("deletes a part that is not referenced anywhere", () => {
+    const part = createPart(db, {
+      partNumber: "SPARE-001",
+      name: "Spare",
+      category: "c",
+      revision: "A",
+    });
+    if (!part.ok) throw new Error("setup");
+    expect(deleteParts(db, [part.partId]).ok).toBe(true);
+    expect(db.select().from(s.parts).all()).toHaveLength(0);
+    expect(db.select().from(s.partRevisions).all()).toHaveLength(0);
   });
 });

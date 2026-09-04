@@ -25,6 +25,7 @@ import {
   createConfig,
   createPart,
   createStand,
+  deleteParts,
   updatePart,
 } from "./domain/authoring";
 import {
@@ -449,6 +450,33 @@ export async function createPartAction(
   if (!result.ok) return fail(result.error);
   revalidatePath("/catalog");
   return { ok: true, error: "" };
+}
+
+export async function deletePartsAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const partIds = formData.getAll("partId").map((v) => String(v).trim()).filter(Boolean);
+  const result = deleteParts(getDb(), partIds, uploadsDir);
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/catalog");
+  revalidatePath("/inventory");
+  revalidatePath("/floor");
+  revalidatePath("/kits");
+  revalidatePath("/procurement");
+  const skipped =
+    result.skipped.length > 0
+      ? ` Skipped ${result.skipped.length}: ${result.skipped
+          .slice(0, 3)
+          .map((row) => `${row.partNumber} (${row.error})`)
+          .join("; ")}`
+      : "";
+  return {
+    ok: true,
+    error: "",
+    message: `Deleted ${result.deleted.length} part(s).${skipped}`,
+  };
 }
 
 export async function saveCatalogSettingsAction(
