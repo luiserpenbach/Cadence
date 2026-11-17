@@ -204,7 +204,7 @@ export function CatalogTable({
           <button
             type="submit"
             disabled={pending}
-            className="rounded-none border border-[var(--danger)] bg-transparent px-3 py-1.5 text-sm text-[var(--danger)] hover:bg-[color-mix(in_oklab,var(--danger)_10%,transparent)] disabled:opacity-50"
+            className="rounded-md border border-[var(--danger)] bg-transparent px-3 py-1.5 text-sm text-[var(--danger)] hover:bg-[color-mix(in_oklab,var(--danger)_10%,transparent)] disabled:opacity-50"
           >
             Delete {liveSelected.length} {liveSelected.length === 1 ? "part" : "parts"}
           </button>
@@ -266,7 +266,7 @@ export function CatalogTable({
               visible.map((p) => (
                 <tr
                   key={p.id}
-                  className="border-b border-[var(--line-soft)] align-top hover:bg-[color-mix(in_oklab,var(--ink)_2.5%,transparent)]"
+                  className="border-b border-[var(--line-soft)] align-top hover:bg-[color-mix(in_oklab,var(--ink)_4%,transparent)]"
                 >
                   <td className="px-2 py-1.5">
                     <input

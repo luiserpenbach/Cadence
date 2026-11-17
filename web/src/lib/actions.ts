@@ -86,6 +86,13 @@ import {
 import { evaluateMeasurement, parseMeasured } from "./domain/measurements";
 import { IDENTITY_COOKIE } from "./identity";
 import { cookies } from "next/headers";
+import { audited } from "./audit-action";
+import {
+  closeIssue,
+  createIssue,
+  dispositionIssue,
+  reopenIssue,
+} from "./domain/issues";
 import path from "node:path";
 
 const uploadsDir = path.join(process.cwd(), "data", "uploads");
@@ -124,6 +131,13 @@ const ackSchema = z.object({
 });
 
 export async function acknowledgeRunGaps(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("acknowledgeRunGaps", formData, () => acknowledgeRunGapsImpl(prev, formData));
+}
+
+async function acknowledgeRunGapsImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -154,6 +168,13 @@ const waiverSchema = z.object({
 });
 
 export async function waiveTest(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("waiveTest", formData, () => waiveTestImpl(prev, formData));
+}
+
+async function waiveTestImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -184,6 +205,13 @@ const testResultSchema = z.object({
 });
 
 export async function recordTestResult(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("recordTestResult", formData, () => recordTestResultImpl(prev, formData));
+}
+
+async function recordTestResultImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -253,6 +281,13 @@ const newRunSchema = z.object({
 });
 
 export async function createRunAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createRunAction", formData, () => createRunActionImpl(prev, formData));
+}
+
+async function createRunActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -278,6 +313,13 @@ const runLifecycleSchema = z.object({
 });
 
 export async function runLifecycleAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("runLifecycleAction", formData, () => runLifecycleActionImpl(prev, formData));
+}
+
+async function runLifecycleActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -306,6 +348,13 @@ const releaseSchema = z.object({
 });
 
 export async function releaseConfig(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("releaseConfig", formData, () => releaseConfigImpl(prev, formData));
+}
+
+async function releaseConfigImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -328,6 +377,13 @@ export async function releaseConfig(
 }
 
 export async function requestReleaseAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("requestReleaseAction", formData, () => requestReleaseActionImpl(prev, formData));
+}
+
+async function requestReleaseActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -352,6 +408,13 @@ const approveSchema = z.object({
 });
 
 export async function approveReleaseAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("approveReleaseAction", formData, () => approveReleaseActionImpl(prev, formData));
+}
+
+async function approveReleaseActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -372,6 +435,13 @@ export async function approveReleaseAction(
 }
 
 export async function returnToDraftAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("returnToDraftAction", formData, () => returnToDraftActionImpl(prev, formData));
+}
+
+async function returnToDraftActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -393,6 +463,13 @@ const cutInSchema = z.object({
 });
 
 export async function cutInRevisionAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("cutInRevisionAction", formData, () => cutInRevisionActionImpl(prev, formData));
+}
+
+async function cutInRevisionActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -429,6 +506,13 @@ const newPartSchema = z.object({
 });
 
 export async function createPartAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createPartAction", formData, () => createPartActionImpl(prev, formData));
+}
+
+async function createPartActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -453,6 +537,13 @@ export async function createPartAction(
 }
 
 export async function deletePartsAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("deletePartsAction", formData, () => deletePartsActionImpl(prev, formData));
+}
+
+async function deletePartsActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -480,6 +571,13 @@ export async function deletePartsAction(
 }
 
 export async function saveCatalogSettingsAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("saveCatalogSettingsAction", formData, () => saveCatalogSettingsActionImpl(prev, formData));
+}
+
+async function saveCatalogSettingsActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -509,6 +607,13 @@ function attachmentPath(entityType: string, entityId: string) {
 }
 
 export async function addLinkAttachmentAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("addLinkAttachmentAction", formData, () => addLinkAttachmentActionImpl(prev, formData));
+}
+
+async function addLinkAttachmentActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -531,6 +636,13 @@ export async function addLinkAttachmentAction(
 }
 
 export async function uploadFileAttachmentAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("uploadFileAttachmentAction", formData, () => uploadFileAttachmentActionImpl(prev, formData));
+}
+
+async function uploadFileAttachmentActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -566,6 +678,13 @@ export async function uploadFileAttachmentAction(
 }
 
 export async function removeAttachmentAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("removeAttachmentAction", formData, () => removeAttachmentActionImpl(prev, formData));
+}
+
+async function removeAttachmentActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -590,6 +709,13 @@ const newRevisionSchema = z.object({
 });
 
 export async function addPartRevisionAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("addPartRevisionAction", formData, () => addPartRevisionActionImpl(prev, formData));
+}
+
+async function addPartRevisionActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -610,6 +736,13 @@ export async function addPartRevisionAction(
 const newArticleSchema = z.object({ serial: nonEmpty, name: nonEmpty });
 
 export async function createArticleAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createArticleAction", formData, () => createArticleActionImpl(prev, formData));
+}
+
+async function createArticleActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -633,6 +766,13 @@ const newStandSchema = z.object({
 });
 
 export async function createStandAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createStandAction", formData, () => createStandActionImpl(prev, formData));
+}
+
+async function createStandActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -660,6 +800,13 @@ const newConfigSchema = z.object({
 });
 
 export async function createConfigAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createConfigAction", formData, () => createConfigActionImpl(prev, formData));
+}
+
+async function createConfigActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -692,6 +839,13 @@ const asBuiltSchema = z.object({
 });
 
 export async function recordAsBuiltAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("recordAsBuiltAction", formData, () => recordAsBuiltActionImpl(prev, formData));
+}
+
+async function recordAsBuiltActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -723,6 +877,13 @@ const startExecutionSchema = z.object({
 });
 
 export async function startExecutionAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("startExecutionAction", formData, () => startExecutionActionImpl(prev, formData));
+}
+
+async function startExecutionActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -752,6 +913,13 @@ const recordStepSchema = z.object({
 });
 
 export async function recordStepAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("recordStepAction", formData, () => recordStepActionImpl(prev, formData));
+}
+
+async function recordStepActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -783,6 +951,13 @@ const abortExecutionSchema = z.object({
 });
 
 export async function abortExecutionAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("abortExecutionAction", formData, () => abortExecutionActionImpl(prev, formData));
+}
+
+async function abortExecutionActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -810,6 +985,13 @@ const newProcedureSchema = z.object({
 });
 
 export async function createProcedureAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createProcedureAction", formData, () => createProcedureActionImpl(prev, formData));
+}
+
+async function createProcedureActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -834,6 +1016,13 @@ const reviseProcedureSchema = z.object({
 });
 
 export async function reviseProcedureAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("reviseProcedureAction", formData, () => reviseProcedureActionImpl(prev, formData));
+}
+
+async function reviseProcedureActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -862,6 +1051,13 @@ const newTestDefSchema = z.object({
 });
 
 export async function createTestDefinitionAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createTestDefinitionAction", formData, () => createTestDefinitionActionImpl(prev, formData));
+}
+
+async function createTestDefinitionActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -952,6 +1148,13 @@ const configEditSchema = z.discriminatedUnion("op", [
 ]);
 
 export async function configEditAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("configEditAction", formData, () => configEditActionImpl(prev, formData));
+}
+
+async function configEditActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1030,6 +1233,13 @@ const cutSchema = z.object({
 });
 
 export async function cutConfigFrom(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("cutConfigFrom", formData, () => cutConfigFromImpl(prev, formData));
+}
+
+async function cutConfigFromImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1055,6 +1265,13 @@ export async function cutConfigFrom(
 }
 
 export async function reverseAsBuiltAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("reverseAsBuiltAction", formData, () => reverseAsBuiltActionImpl(prev, formData));
+}
+
+async function reverseAsBuiltActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1072,6 +1289,13 @@ export async function reverseAsBuiltAction(
 }
 
 export async function updatePartAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("updatePartAction", formData, () => updatePartActionImpl(prev, formData));
+}
+
+async function updatePartActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1102,6 +1326,13 @@ export async function updatePartAction(
 }
 
 export async function createLotAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createLotAction", formData, () => createLotActionImpl(prev, formData));
+}
+
+async function createLotActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1133,6 +1364,13 @@ export async function createLotAction(
 }
 
 export async function adjustLotAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("adjustLotAction", formData, () => adjustLotActionImpl(prev, formData));
+}
+
+async function adjustLotActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1160,6 +1398,13 @@ export async function adjustLotAction(
 }
 
 export async function createPoAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createPoAction", formData, () => createPoActionImpl(prev, formData));
+}
+
+async function createPoActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1187,6 +1432,13 @@ export async function createPoAction(
 }
 
 export async function addPoLineAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("addPoLineAction", formData, () => addPoLineActionImpl(prev, formData));
+}
+
+async function addPoLineActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1214,6 +1466,13 @@ export async function addPoLineAction(
 }
 
 export async function markPoOrderedAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("markPoOrderedAction", formData, () => markPoOrderedActionImpl(prev, formData));
+}
+
+async function markPoOrderedActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1227,6 +1486,13 @@ export async function markPoOrderedAction(
 }
 
 export async function receivePoAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("receivePoAction", formData, () => receivePoActionImpl(prev, formData));
+}
+
+async function receivePoActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1255,6 +1521,13 @@ export async function receivePoAction(
 }
 
 export async function openShortagePoAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("openShortagePoAction", formData, () => openShortagePoActionImpl(prev, formData));
+}
+
+async function openShortagePoActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1277,6 +1550,13 @@ export async function openShortagePoAction(
 }
 
 export async function createKitAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createKitAction", formData, () => createKitActionImpl(prev, formData));
+}
+
+async function createKitActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1311,6 +1591,13 @@ export async function createKitAction(
 }
 
 export async function allocateKitLineAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("allocateKitLineAction", formData, () => allocateKitLineActionImpl(prev, formData));
+}
+
+async function allocateKitLineActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1337,6 +1624,13 @@ export async function allocateKitLineAction(
 }
 
 export async function unallocateKitLineAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("unallocateKitLineAction", formData, () => unallocateKitLineActionImpl(prev, formData));
+}
+
+async function unallocateKitLineActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1361,6 +1655,13 @@ export async function unallocateKitLineAction(
 }
 
 export async function allocateRemainingAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("allocateRemainingAction", formData, () => allocateRemainingActionImpl(prev, formData));
+}
+
+async function allocateRemainingActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1387,6 +1688,13 @@ export async function allocateRemainingAction(
 }
 
 export async function issueKitAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("issueKitAction", formData, () => issueKitActionImpl(prev, formData));
+}
+
+async function issueKitActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1411,6 +1719,13 @@ export async function issueKitAction(
 }
 
 export async function cancelKitAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("cancelKitAction", formData, () => cancelKitActionImpl(prev, formData));
+}
+
+async function cancelKitActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1432,6 +1747,13 @@ export async function cancelKitAction(
 }
 
 export async function importBomCsvAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("importBomCsvAction", formData, () => importBomCsvActionImpl(prev, formData));
+}
+
+async function importBomCsvActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1455,6 +1777,13 @@ export async function importBomCsvAction(
 }
 
 export async function importCatalogCsvAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("importCatalogCsvAction", formData, () => importCatalogCsvActionImpl(prev, formData));
+}
+
+async function importCatalogCsvActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1480,6 +1809,13 @@ export async function importCatalogCsvAction(
 }
 
 export async function createWorkOrderAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createWorkOrderAction", formData, () => createWorkOrderActionImpl(prev, formData));
+}
+
+async function createWorkOrderActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1511,6 +1847,13 @@ export async function createWorkOrderAction(
 }
 
 export async function completeWorkOrderAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("completeWorkOrderAction", formData, () => completeWorkOrderActionImpl(prev, formData));
+}
+
+async function completeWorkOrderActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1541,6 +1884,13 @@ export async function completeWorkOrderAction(
 }
 
 export async function cancelWorkOrderAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("cancelWorkOrderAction", formData, () => cancelWorkOrderActionImpl(prev, formData));
+}
+
+async function cancelWorkOrderActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1559,6 +1909,13 @@ export async function cancelWorkOrderAction(
 }
 
 export async function openShortageWoAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("openShortageWoAction", formData, () => openShortageWoActionImpl(prev, formData));
+}
+
+async function openShortageWoActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1586,6 +1943,13 @@ export async function openShortageWoAction(
 }
 
 export async function createAndPinTestAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createAndPinTestAction", formData, () => createAndPinTestActionImpl(prev, formData));
+}
+
+async function createAndPinTestActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1616,6 +1980,13 @@ export async function createAndPinTestAction(
 }
 
 export async function createAndPinProcedureAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createAndPinProcedureAction", formData, () => createAndPinProcedureActionImpl(prev, formData));
+}
+
+async function createAndPinProcedureActionImpl(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
@@ -1639,4 +2010,112 @@ export async function createAndPinProcedureAction(
   revalidatePath(`/configs/${configId}`);
   revalidatePath("/procedures");
   return { ok: true, error: "", message: `Linked ${parsed.data.key}.` };
+}
+
+export async function createIssueAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("createIssueAction", formData, () =>
+    createIssueActionImpl(prev, formData),
+  );
+}
+
+async function createIssueActionImpl(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const result = createIssue(getDb(), {
+    title: String(formData.get("title") ?? ""),
+    description: String(formData.get("description") ?? ""),
+    severity: String(formData.get("severity") ?? "minor"),
+    reportedBy: await actor(formData),
+    articleId: String(formData.get("articleId") ?? "") || null,
+    partRevisionId: String(formData.get("partRevisionId") ?? "") || null,
+    lotId: String(formData.get("lotId") ?? "") || null,
+    runId: String(formData.get("runId") ?? "") || null,
+  });
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/issues");
+  redirect(`/issues/${result.issueId}`);
+}
+
+export async function dispositionIssueAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("dispositionIssueAction", formData, () =>
+    dispositionIssueActionImpl(prev, formData),
+  );
+}
+
+async function dispositionIssueActionImpl(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const issueId = String(formData.get("issueId") ?? "");
+  const result = dispositionIssue(getDb(), {
+    issueId,
+    disposition: String(formData.get("disposition") ?? ""),
+    notes: String(formData.get("notes") ?? ""),
+    by: await actor(formData),
+  });
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/issues");
+  revalidatePath(`/issues/${issueId}`);
+  return { ok: true, error: "" };
+}
+
+export async function closeIssueAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("closeIssueAction", formData, () =>
+    closeIssueActionImpl(prev, formData),
+  );
+}
+
+async function closeIssueActionImpl(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const issueId = String(formData.get("issueId") ?? "");
+  const result = closeIssue(getDb(), {
+    issueId,
+    by: await actor(formData),
+    notes: String(formData.get("notes") ?? ""),
+  });
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/issues");
+  revalidatePath(`/issues/${issueId}`);
+  return { ok: true, error: "" };
+}
+
+export async function reopenIssueAction(
+  prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  return audited("reopenIssueAction", formData, () =>
+    reopenIssueActionImpl(prev, formData),
+  );
+}
+
+async function reopenIssueActionImpl(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  ensureAppData();
+  const issueId = String(formData.get("issueId") ?? "");
+  const result = reopenIssue(getDb(), {
+    issueId,
+    by: await actor(formData),
+    reason: String(formData.get("reason") ?? ""),
+  });
+  if (!result.ok) return fail(result.error);
+  revalidatePath("/issues");
+  revalidatePath(`/issues/${issueId}`);
+  return { ok: true, error: "" };
 }

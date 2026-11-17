@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq, inArray } from "drizzle-orm";
 import { AppShell, Badge, DataTable, Panel } from "../../../components/ui";
+import { unresolvedIssuesFor } from "../../../lib/domain/issues";
+import { ActivityPanel, IssueList } from "../../../components/issues-ui";
 import { ensureAppData } from "../../../lib/bootstrap";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
@@ -55,6 +57,7 @@ export default async function PartDetailPage({
           .all()
       : [];
 
+  const issues = unresolvedIssuesFor(db, { partRevisionIds: revIds });
   const stock = stockByRevision(db);
   const settings = ensureCatalogSettings(db);
 
@@ -146,6 +149,13 @@ export default async function PartDetailPage({
               parts={[{ id: part.id, partNumber: part.partNumber }]}
             />
           </Panel>
+
+          <Panel>
+            <h2 className="font-display">Issues</h2>
+            <IssueList issues={issues} />
+          </Panel>
+
+          <ActivityPanel refId={part.id} />
         </div>
       </div>
     </AppShell>

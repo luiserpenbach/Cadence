@@ -1,14 +1,15 @@
 import { AppSidebar } from "./header";
 import { IdentityChip } from "./identity";
+import { CommandPalette } from "./command-palette";
 
 export const inputClass =
-  "w-full rounded-none border border-[var(--line)] bg-[var(--control)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--ink)]";
+  "w-full rounded-md border border-[var(--line)] bg-[var(--control)] px-2.5 py-1.5 text-sm outline-none focus:border-[color-mix(in_oklab,var(--accent)_70%,transparent)]";
 export const compactInputClass =
-  "rounded-none border border-[var(--line)] bg-[var(--control)] px-2 py-1 text-xs outline-none focus:border-[var(--ink)]";
+  "rounded-md border border-[var(--line)] bg-[var(--control)] px-2 py-1 text-xs outline-none focus:border-[color-mix(in_oklab,var(--accent)_70%,transparent)]";
 export const buttonClass =
-  "inline-flex items-center justify-center rounded-none bg-[var(--ink)] px-3 py-1.5 text-sm font-medium text-[var(--bg0)] disabled:opacity-50";
+  "inline-flex items-center justify-center rounded-md bg-[var(--ink)] px-3 py-1.5 text-sm font-medium text-[var(--bg0)] transition-opacity hover:opacity-90 disabled:opacity-50";
 export const subtleButtonClass =
-  "inline-flex items-center justify-center rounded-none border border-[var(--line)] bg-transparent px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-[var(--panel-strong)]";
+  "inline-flex items-center justify-center rounded-md border border-[var(--line)] bg-transparent px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-[var(--panel-strong)]";
 export const linkClass =
   "text-[11px] font-medium uppercase tracking-[0.08em] underline underline-offset-2 decoration-[var(--line)] hover:decoration-[var(--ink)]";
 
@@ -27,11 +28,12 @@ export function AppShell({
     <div className="flex min-h-screen" suppressHydrationWarning>
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="sticky top-0 z-30 flex h-11 shrink-0 items-center justify-end border-b border-[var(--line)] bg-[var(--panel)] px-5">
+        <div className="sticky top-0 z-30 flex h-11 shrink-0 items-center justify-between gap-4 border-b border-[var(--line-soft)] bg-[var(--bg0)] px-5">
+          <CommandPalette />
           <IdentityChip />
         </div>
         <main className="mx-auto w-full max-w-7xl flex-1 px-5 py-5">
-          <div className="mb-4 flex items-end justify-between gap-4 border-b border-[var(--line)] pb-3">
+          <div className="mb-4 flex items-end justify-between gap-4 border-b border-[var(--line-soft)] pb-3">
             <div>
               <h1 className="font-display text-[var(--ink)]">{title}</h1>
               {subtitle ? (
@@ -58,7 +60,7 @@ export function Panel({
 }) {
   return (
     <section
-      className={`rounded-none border border-[var(--line)] bg-[var(--panel)] p-3.5 ${className}`}
+      className={`rounded-lg border border-[var(--line-soft)] bg-[var(--panel)] p-4 ${className}`}
     >
       {children}
     </section>
@@ -83,7 +85,7 @@ export function Badge({
   };
   return (
     <span
-      className={`inline-flex items-center rounded-none border px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.08em] ${tones[tone]}`}
+      className={`inline-flex items-center rounded border px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.08em] ${tones[tone]}`}
     >
       {children}
     </span>
@@ -132,7 +134,7 @@ export function DataTable({
             rows.map((row, i) => (
               <tr
                 key={i}
-                className="border-b border-[var(--line-soft)] align-top hover:bg-[color-mix(in_oklab,var(--ink)_2.5%,transparent)]"
+                className="border-b border-[var(--line-soft)] align-top hover:bg-[color-mix(in_oklab,var(--ink)_4%,transparent)]"
               >
                 {row.map((cell, j) => (
                   <td key={j} className="px-2 py-1.5">

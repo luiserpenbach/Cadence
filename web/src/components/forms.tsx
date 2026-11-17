@@ -50,7 +50,7 @@ export function AckGapsForm({ runId }: { runId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-none bg-[var(--accent-hot)] px-3.5 py-1.5 text-sm font-medium text-[var(--bg0)] disabled:opacity-50"
+        className="rounded-md bg-[var(--accent-hot)] px-3.5 py-1.5 text-sm font-medium text-[var(--bg0)] disabled:opacity-50"
       >
         Acknowledge gaps &amp; proceed
       </button>
@@ -301,7 +301,7 @@ export function AbortExecutionForm({
       <button
         type="submit"
         disabled={pending}
-        className="rounded-none border border-[color-mix(in_oklab,var(--danger)_40%,var(--line))] px-3 py-1.5 text-sm text-[var(--danger)] disabled:opacity-50"
+        className="rounded-md border border-[color-mix(in_oklab,var(--danger)_40%,var(--line))] px-3 py-1.5 text-sm text-[var(--danger)] disabled:opacity-50"
       >
         Abort execution
       </button>

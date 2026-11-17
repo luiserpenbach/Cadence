@@ -42,9 +42,13 @@ npm run db:generate   # drizzle-kit migration from schema changes
 | `/runs/[id]` | Verification gaps, ack, record results |
 | `/procedures` | Versioned work instructions |
 | `/trace` | Serial / lot genealogy |
+| `/issues` | Nonconformances: report → disposition → close; unresolved issues warn on runs, kits, lots |
+| `/activity` | Hash-chained audit log of every write (who, what, when) |
 | `/change` | Config delta / blast radius |
 | `/inventory` | Lots, receive/adjust, search, kit holds |
 | `/kits` | Reserve lots (allocate remaining) and issue as-built |
 | `/procurement` | POs and receive-into-stock |
+
+Press ⌘K / Ctrl-K anywhere to jump to a part, config, serial, run, lot, or issue.
 
 See repo root [`CONCEPT.md`](../CONCEPT.md) for product decisions.

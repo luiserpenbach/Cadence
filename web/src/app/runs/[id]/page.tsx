@@ -14,6 +14,8 @@ import {
   WaiverForm,
 } from "../../../components/forms";
 import { listRunProcedureStatus } from "../../../lib/domain/execution";
+import { unresolvedIssuesForRun } from "../../../lib/domain/issues";
+import { ActivityPanel, IssueBanner } from "../../../components/issues-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +71,7 @@ export default async function RunDetailPage({
   const missing = verification.gaps.filter((g) => g.status === "missing");
   const waivable = verification.gaps.filter((g) => g.status !== "waived");
   const procedureStatus = listRunProcedureStatus(db, run.id);
+  const issues = unresolvedIssuesForRun(db, run.id);
 
   return (
     <AppShell title={run.key} subtitle={`${article.serial} @ ${stand.key}`}>
@@ -93,7 +96,11 @@ export default async function RunDetailPage({
           </div>
         </div>
       ) : null}
-      <div className="mb-5 flex flex-wrap gap-2">
+      <IssueBanner
+        issues={issues}
+        what={`${article.serial}, this run, or parts installed on it`}
+      />
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         <Badge tone="accent">{run.status}</Badge>
         {verification.gaps.length ? (
           <Badge tone={verification.unacknowledgedCount ? "warn" : "accent"}>
@@ -109,7 +116,13 @@ export default async function RunDetailPage({
         ) : verification.gaps.length ? (
           <Badge tone="accent">all gaps acknowledged</Badge>
         ) : null}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          <Link
+            className="text-sm underline"
+            href={`/issues?runId=${run.id}&articleId=${article.id}`}
+          >
+            Report issue
+          </Link>
           {run.status === "planned" ? (
             <RunLifecycleForm runId={run.id} transition="start" />
           ) : run.status === "in_progress" ? (
@@ -163,7 +176,7 @@ export default async function RunDetailPage({
             {verification.gaps.map((g) => (
               <li
                 key={g.testDefinitionId + g.source}
-                className="flex flex-wrap items-center gap-2 rounded-none bg-[var(--panel-strong)] px-3 py-2 text-sm"
+                className="flex flex-wrap items-center gap-2 rounded-md bg-[var(--panel-strong)] px-3 py-2 text-sm"
               >
                 <Badge
                   tone={
@@ -248,7 +261,7 @@ export default async function RunDetailPage({
           {procedureStatus.map((p) => (
             <li
               key={p.procedureId + p.source}
-              className="flex flex-wrap items-center gap-2 rounded-none bg-[var(--panel-strong)] px-3 py-2 text-sm"
+              className="flex flex-wrap items-center gap-2 rounded-md bg-[var(--panel-strong)] px-3 py-2 text-sm"
             >
               <span className="font-mono text-xs text-[var(--muted)]">
                 {p.procedureKey} · v{p.version}
@@ -331,6 +344,8 @@ export default async function RunDetailPage({
           />
         </div>
       </Panel>
+
+      <ActivityPanel refId={run.id} className="mt-5" />
     </AppShell>
   );
 }

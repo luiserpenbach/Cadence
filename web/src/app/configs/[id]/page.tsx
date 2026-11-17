@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell, Badge, DataTable, Panel } from "../../../components/ui";
+import { ActivityPanel } from "../../../components/issues-ui";
 import { ensureAppData } from "../../../lib/bootstrap";
 import { getConfigBundle } from "../../../lib/queries";
 import {
@@ -232,7 +233,7 @@ export default async function ConfigDetailPage({
               {effectivity.map((e) => (
                 <li
                   key={e.id}
-                  className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
+                  className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
                 >
                   <div>
                     Articles:{" "}
@@ -435,6 +436,8 @@ export default async function ConfigDetailPage({
           <p className="mt-2 text-sm text-[var(--muted)]">{config.notes}</p>
         </Panel>
       ) : null}
+
+      <ActivityPanel refId={config.id} className="mt-5" />
     </AppShell>
   );
 }

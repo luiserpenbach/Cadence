@@ -550,6 +550,67 @@ export const catalogSettings = sqliteTable("catalog_settings", {
   prefixesJson: text("prefixes_json").notNull().default("[]"),
 });
 
+// Nonconformance / discrepancy records (CONCEPT hard problem #3, open work
+// under change). An issue is raised against real hardware — an article, a
+// part revision, an inventory lot, a run — and stays open until someone
+// records a disposition. Open issues warn everywhere that hardware is used.
+export const issueSeverities = ["minor", "major", "critical"] as const;
+export type IssueSeverity = (typeof issueSeverities)[number];
+
+export const issueStatuses = ["open", "dispositioned", "closed"] as const;
+export type IssueStatus = (typeof issueStatuses)[number];
+
+export const issueDispositions = [
+  "use_as_is",
+  "rework",
+  "scrap",
+  "return_to_vendor",
+] as const;
+export type IssueDisposition = (typeof issueDispositions)[number];
+
+export const issues = sqliteTable(
+  "issues",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    severity: text("severity").notNull().default("minor"),
+    status: text("status").notNull().default("open"),
+    articleId: text("article_id").references(() => articles.id),
+    partRevisionId: text("part_revision_id").references(() => partRevisions.id),
+    lotId: text("lot_id").references(() => inventoryLots.id),
+    runId: text("run_id").references(() => runs.id),
+    reportedBy: text("reported_by").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    disposition: text("disposition").notNull().default(""),
+    dispositionNotes: text("disposition_notes").notNull().default(""),
+    dispositionBy: text("disposition_by"),
+    dispositionAt: text("disposition_at"),
+    closedBy: text("closed_by"),
+    closedAt: text("closed_at"),
+    closeNotes: text("close_notes").notNull().default(""),
+  },
+  (t) => [uniqueIndex("issues_key_uidx").on(t.key)],
+);
+
+// Append-only, hash-chained record of every successful write: who did what,
+// when, to which records. Each row's hash covers the previous row's hash, so
+// an edit or deletion anywhere in the history is detectable.
+export const auditEvents = sqliteTable("audit_events", {
+  seq: integer("seq").primaryKey({ autoIncrement: true }),
+  at: text("at").notNull(),
+  actor: text("actor").notNull().default(""),
+  action: text("action").notNull(),
+  summary: text("summary").notNull().default(""),
+  // Space-separated ids of the records this event touched (" cfg_x run_y ").
+  refs: text("refs").notNull().default(""),
+  prevHash: text("prev_hash").notNull().default(""),
+  hash: text("hash").notNull(),
+});
+
 export const partsRelations = relations(parts, ({ many }) => ({
   revisions: many(partRevisions),
 }));

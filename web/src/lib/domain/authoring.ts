@@ -243,6 +243,15 @@ function partDeleteBlocker(db: Db, partId: string): string | null {
   }
   if (
     db
+      .select({ id: s.issues.id })
+      .from(s.issues)
+      .where(inArray(s.issues.partRevisionId, revIds))
+      .get()
+  ) {
+    return "referenced by an issue";
+  }
+  if (
+    db
       .select({ id: s.inventoryLots.id })
       .from(s.inventoryLots)
       .where(inArray(s.inventoryLots.partRevisionId, revIds))
