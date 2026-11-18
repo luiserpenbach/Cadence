@@ -67,7 +67,7 @@ export default async function ExecutionPage({
               return (
                 <li
                   key={step.index}
-                  className={`rounded-none px-3 py-2 text-sm ${
+                  className={`rounded-md px-3 py-2 text-sm ${
                     isNext
                       ? "border border-[var(--ink)] bg-[var(--control)]"
                       : "bg-[var(--panel-strong)]"

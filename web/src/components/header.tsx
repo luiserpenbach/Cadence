@@ -8,12 +8,13 @@ const NAV_EVENT = "cadence-nav";
 const COLLAPSE_KEY = "cadence-nav-collapsed";
 const SECTIONS_KEY = "cadence-nav-sections";
 
-type SectionId = "hardware" | "testing" | "procurement";
+type SectionId = "hardware" | "testing" | "quality" | "procurement";
 type SectionState = Record<SectionId, boolean>;
 
 const defaultSections: SectionState = {
   hardware: true,
   testing: true,
+  quality: true,
   procurement: true,
 };
 
@@ -43,8 +44,16 @@ const sections: Array<{
     items: [
       { href: "/runs", label: "Runs" },
       { href: "/procedures", label: "Procedures" },
-      { href: "/trace", label: "Trace" },
       { href: "/change", label: "Change" },
+    ],
+  },
+  {
+    id: "quality",
+    label: "Quality",
+    items: [
+      { href: "/issues", label: "Issues" },
+      { href: "/trace", label: "Trace" },
+      { href: "/activity", label: "Activity" },
     ],
   },
   {
@@ -213,6 +222,19 @@ function NavIcon({ href }: { href: string }) {
           <path d="M4 6h6l-1.5-1.5M10 10H4l1.5 1.5" />
         </svg>
       );
+    case "/issues":
+      return (
+        <svg {...common}>
+          <path d="M8 2.5 14 13H2zM8 6.5v3.2M8 11.2v.4" />
+        </svg>
+      );
+    case "/activity":
+      return (
+        <svg {...common}>
+          <circle cx="8" cy="8" r="5.5" />
+          <path d="M8 5v3.2l2 1.3" />
+        </svg>
+      );
     case "/procurement":
       return (
         <svg {...common}>
@@ -245,17 +267,14 @@ function NavLink({
     <Link
       href={href}
       title={collapsed ? label : undefined}
-      className={`relative flex items-center gap-2.5 py-1.5 text-[11px] font-mono uppercase tracking-[0.08em] ${
-        collapsed ? "justify-center px-0" : "px-3"
+      className={`mx-2 flex items-center gap-2.5 rounded-md py-1.5 text-[13px] ${
+        collapsed ? "justify-center px-0" : "px-2"
       } ${
         active
           ? "bg-[var(--panel-strong)] text-[var(--ink)]"
-          : "text-[var(--muted)] hover:text-[var(--ink)]"
+          : "text-[var(--muted)] hover:bg-[var(--chip)] hover:text-[var(--ink)]"
       }`}
     >
-      {active ? (
-        <span className="absolute inset-y-1 left-0 w-[2px] bg-[var(--ink)]" />
-      ) : null}
       <NavIcon href={href} />
       {collapsed ? <span className="sr-only">{label}</span> : label}
     </Link>
@@ -269,18 +288,18 @@ export function AppSidebar() {
 
   return (
     <aside
-      className={`sticky top-0 z-40 flex h-screen shrink-0 flex-col border-r border-[var(--line)] border-l-[3px] border-l-[var(--ink)] bg-[var(--panel)] ${
+      className={`sticky top-0 z-40 flex h-screen shrink-0 flex-col border-r border-[var(--line-soft)] bg-[var(--bg0)] ${
         collapsed ? "w-14" : "w-52"
       }`}
     >
-      <div className="flex h-11 shrink-0 items-center border-b border-[var(--line)]">
+      <div className="flex h-11 shrink-0 items-center border-b border-[var(--line-soft)]">
         <Link
           href="/"
           className={`flex min-w-0 items-center gap-2 text-[var(--ink)] ${
             collapsed ? "h-11 flex-1 justify-center px-0" : "flex-1 px-3"
           }`}
         >
-          <span aria-hidden className="block h-2.5 w-2.5 shrink-0 bg-[var(--ink)]" />
+          <span aria-hidden className="block h-2.5 w-2.5 shrink-0 rounded-[2px] bg-[var(--accent)]" />
           {collapsed ? (
             <span className="sr-only">cadence</span>
           ) : (
@@ -323,7 +342,7 @@ export function AppSidebar() {
               ) : (
                 <button
                   type="button"
-                  className={`flex w-full items-center justify-between px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] ${
+                  className={`flex w-full items-center justify-between px-4 py-1.5 text-[10px] font-medium uppercase tracking-[0.1em] ${
                     sectionActive
                       ? "text-[var(--ink)]"
                       : "text-[var(--muted)] hover:text-[var(--ink)]"

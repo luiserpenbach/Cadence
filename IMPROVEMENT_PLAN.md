@@ -339,6 +339,46 @@ BoM authoring that scales past the demo.*
    and “held by” kit links; Floor highlights pins that are short; as-built
    picker prefers covering-config pins.
 
+### Phase 11 — Quality loop, audit trail, and findability ✅ done
+*Goal: the three things a team past ~20 people cannot work without — a
+place to put "this hardware is wrong", a record of who changed what, and a
+way to find any record from the identifier in your hand.*
+
+1. Issues (nonconformances, hard problem #3): raised against an article,
+   part revision, inventory lot, or run (a run implies its article, a lot
+   its part revision). `open → dispositioned → closed` with use-as-is /
+   rework / scrap / return-to-vendor and a required rationale. Critical
+   issues need a second person to disposition. Record-and-warn, not block:
+   unresolved issues banner on runs (article, run, and as-built lots) and
+   kits, put lots on hold in inventory, and show on article and part pages.
+2. Audit log: every server action is wrapped (`audited()` in
+   `lib/audit-action.ts`) so each successful write appends who / what /
+   when / which records to `audit_events`. Rows are SHA-256 hash-chained;
+   `/activity` verifies the chain on load and detail pages show per-record
+   history. New actions must follow the same wrapper pattern.
+3. Global search (⌘K): one box over part numbers, config keys, serials,
+   runs, kits, lots, POs, work orders, procedures, and issues.
+4. Dashboard attention queue (reviews waiting on a second approver,
+   unresolved issues, runs with unacknowledged gaps) and recent activity.
+5. Neutral dark theme: all color lives in the tokens in `globals.css`.
+
+### Commercial-readiness gaps (not started, in priority order)
+1. **Real identity.** Names are still free text, so the audit log and the
+   two-person rules (R3 release, critical issues) are only as honest as the
+   person typing. SSO/OIDC + roles is the first thing a paying customer
+   will ask for; `actor()` in `lib/actions.ts` and the identity field are
+   the single seam.
+2. **Multi-level product structure.** A config's BoM is flat. Vehicle-scale
+   hardware needs assemblies that contain assemblies, serialized
+   sub-assemblies installed into parents, and where-used across levels
+   (hard problem #1).
+3. **Postgres + multi-user concurrency.** SQLite on local disk is
+   single-node; list pages load whole tables and need pagination.
+4. **Integrations.** No public API, webhooks, CAD/PLM import, or DAQ
+   ingest. Search is the only JSON endpoint.
+5. **Hard gates by risk class** (concept §6 "later"): unresolved critical
+   issues and R3 gaps should be able to block a run start.
+
 ### Explicitly deferred (per concept freeze)
 Hard gating by risk class, CAD/PLM import, date effectivity, multi-site,
 rate production, auth/multi-user (keep free-text identity fields for v0, but

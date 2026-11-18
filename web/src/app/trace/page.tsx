@@ -121,7 +121,7 @@ export default async function TracePage({
                 {result.runs.map((r) => (
                   <li
                     key={r.id}
-                    className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
+                    className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
@@ -183,7 +183,7 @@ export default async function TracePage({
                 {result.installs.map((i, idx) => (
                   <li
                     key={idx}
-                    className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
+                    className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
                   >
                     <Link
                       className="font-mono text-xs underline"
@@ -219,7 +219,7 @@ export default async function TracePage({
                 {result.lots.map((l, idx) => (
                   <li
                     key={idx}
-                    className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
+                    className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
                   >
                     <span className="font-mono text-xs">{l.partNumber}</span> @{" "}
                     {l.revision}
@@ -240,7 +240,7 @@ export default async function TracePage({
                 {result.purchaseOrders.map((po, idx) => (
                   <li
                     key={idx}
-                    className="rounded-none bg-[var(--panel-strong)] px-3 py-2"
+                    className="rounded-md bg-[var(--panel-strong)] px-3 py-2"
                   >
                     <span className="font-mono text-xs">{po.poNumber}</span> ·{" "}
                     {po.supplier}

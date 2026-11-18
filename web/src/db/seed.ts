@@ -628,6 +628,23 @@ export function seedIfEmpty() {
       .run();
   }
 
+  // One open nonconformance on the first N+1 article so the quality loop
+  // (report → disposition → close) has something to act on.
+  db.insert(s.issues)
+    .values({
+      id: id("iss"),
+      key: "ISS-0001",
+      title: "Valve stem packing weeps at cryo temperature",
+      description:
+        "Frost line observed at the stem packing during chill-down. Not seen at ambient leak check.",
+      severity: "major",
+      articleId: artBySerial["TP-017"],
+      partRevisionId: revIds["VLV-CRYO-050@B"],
+      runId,
+      reportedBy: "j.ortiz",
+    })
+    .run();
+
   return {
     seeded: true,
     configN: cfgN,

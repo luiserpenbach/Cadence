@@ -254,7 +254,7 @@ export function AttachmentForms({
           type="file"
           name="file"
           required
-          className="block w-full text-sm file:mr-2 file:rounded-none file:border file:border-[var(--line)] file:bg-[var(--control)] file:px-3 file:py-1.5 file:text-sm"
+          className="block w-full text-sm file:mr-2 file:rounded-md file:border file:border-[var(--line)] file:bg-[var(--control)] file:px-3 file:py-1.5 file:text-sm"
         />
         <div className="flex gap-2">
           <input

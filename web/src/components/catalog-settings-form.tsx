@@ -33,7 +33,7 @@ export function CatalogSettingsForm({
   return (
     <form action={formAction} className="space-y-5">
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-none border border-[var(--line)] bg-[var(--panel)] p-3.5">
+        <section className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3.5">
           <h2 className="font-display">Categories</h2>
           <p className="mt-1 text-xs text-[var(--muted)]">
             Part category is chosen from this list. It is not free text on the
@@ -76,7 +76,7 @@ export function CatalogSettingsForm({
           </button>
         </section>
 
-        <section className="rounded-none border border-[var(--line)] bg-[var(--panel)] p-3.5">
+        <section className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3.5">
           <h2 className="font-display">Part number prefixes</h2>
           <p className="mt-1 text-xs text-[var(--muted)]">
             Used to auto-fill the next part number. Digits is the numeric width

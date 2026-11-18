@@ -5,6 +5,7 @@ import { ensureAppData } from "../../lib/bootstrap";
 import { getDb } from "../../db";
 import * as s from "../../db/schema";
 import { availableQty } from "../../lib/domain/inventory";
+import { lotsOnHold } from "../../lib/domain/issues";
 import { AdjustLotForm, CancelWorkOrderForm, CompleteWorkOrderForm, CreateLotForm, CreateWorkOrderForm } from "../../components/inventory-forms";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,8 @@ export default async function InventoryPage({
     heldByLot.set(h.lotId, list);
   }
 
+  const onHold = lotsOnHold(db);
+
   const filtered = q
     ? rows.filter((r) =>
         `${r.partNumber} ${r.revision} ${r.lotCode} ${r.location} ${r.name}`
@@ -111,7 +114,7 @@ export default async function InventoryPage({
           </form>
           <DataTable
             empty="No lots yet — create one or receive a PO."
-            headers={["Part", "Rev", "On hand", "Reserved", "Avail", "Lot", "Held by", "Location"]}
+            headers={["Part", "Rev", "On hand", "Reserved", "Avail", "Lot", "Issues", "Held by", "Location"]}
             rows={filtered.map((r) => [
               <span key="p" className="font-mono text-xs">
                 {r.partNumber}
@@ -127,6 +130,27 @@ export default async function InventoryPage({
               >
                 {r.lotCode}
               </Link>,
+              onHold.has(r.id) ? (
+                <Link key="i" href={`/issues/${onHold.get(r.id)![0].id}`}>
+                  <Badge
+                    tone={
+                      onHold.get(r.id)!.some((i) => i.severity === "critical")
+                        ? "danger"
+                        : "warn"
+                    }
+                  >
+                    hold · {onHold.get(r.id)![0].key}
+                  </Badge>
+                </Link>
+              ) : (
+                <Link
+                  key="i"
+                  className="text-xs text-[var(--muted)] underline"
+                  href={`/issues?lotId=${r.id}`}
+                >
+                  report
+                </Link>
+              ),
               <span key="h" className="text-xs">
                 {(heldByLot.get(r.id) ?? []).map((h) => (
                   <Link key={h.kitId} className="mr-1 underline" href={`/kits/${h.kitId}`}>

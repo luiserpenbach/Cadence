@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { AppShell, Badge, DataTable, Panel } from "../../../components/ui";
+import { unresolvedIssuesFor } from "../../../lib/domain/issues";
+import { ActivityPanel, IssueBanner } from "../../../components/issues-ui";
 import { ensureAppData } from "../../../lib/bootstrap";
 import { getDb } from "../../../db";
 import * as s from "../../../db/schema";
@@ -87,8 +89,13 @@ export default async function KitDetailPage({
     lots.map((l) => [l.id, l]),
   );
 
+  const heldIssues = unresolvedIssuesFor(db, {
+    lotIds: lines.map((l) => l.lotId).filter((v): v is string => Boolean(v)),
+  });
+
   return (
     <AppShell title={kit.key} subtitle={`${article?.serial} · ${config?.key}`}>
+      <IssueBanner issues={heldIssues} what="lots allocated to this kit" />
       <div className="mb-5 flex flex-wrap gap-2">
         <Badge
           tone={
@@ -176,6 +183,7 @@ export default async function KitDetailPage({
           </div>
         </Panel>
       </div>
+      <ActivityPanel refId={kit.id} className="mt-5" />
     </AppShell>
   );
 }

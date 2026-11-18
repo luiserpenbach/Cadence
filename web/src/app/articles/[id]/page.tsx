@@ -10,6 +10,8 @@ import { getConfigBom } from "../../../lib/impact";
 import { AsBuiltForm } from "../../../components/authoring-forms";
 import { ReverseAsBuiltButton } from "../../../components/inventory-forms";
 import { QrLabel } from "../../../components/qr";
+import { unresolvedIssuesFor } from "../../../lib/domain/issues";
+import { ActivityPanel, IssueList } from "../../../components/issues-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +70,17 @@ export default async function ArticleDetailPage({
     .sort((a, b) => a.partNumber.localeCompare(b.partNumber));
 
   const delta = diffAsBuilt(db, article.id);
+  const installedLotIds = db
+    .select({ lotId: s.asBuiltLines.lotId })
+    .from(s.asBuiltLines)
+    .where(eq(s.asBuiltLines.articleId, article.id))
+    .all()
+    .map((r) => r.lotId)
+    .filter((v): v is string => Boolean(v));
+  const issues = unresolvedIssuesFor(db, {
+    articleId: article.id,
+    lotIds: [...new Set(installedLotIds)],
+  });
   const designedPins = delta?.configId ? getConfigBom(delta.configId) : [];
   const pinRevIds = new Set(designedPins.map((p) => p.partRevisionId));
   const asBuiltOptions = [
@@ -88,6 +101,15 @@ export default async function ArticleDetailPage({
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-wrap gap-2">
           <Badge tone="neutral">{article.status}</Badge>
+          {issues.length ? (
+            <Badge
+              tone={
+                issues.some((i) => i.severity === "critical") ? "danger" : "warn"
+              }
+            >
+              {issues.length} unresolved {issues.length === 1 ? "issue" : "issues"}
+            </Badge>
+          ) : null}
           {delta ? (
             delta.lines.length === 0 ? (
               <Badge tone="ok">matches {delta.configKey}</Badge>
@@ -197,6 +219,19 @@ export default async function ArticleDetailPage({
           </Panel>
 
           <Panel>
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-display">Issues</h2>
+              <Link
+                className="text-xs text-[var(--muted)] underline"
+                href={`/issues?articleId=${article.id}`}
+              >
+                Report
+              </Link>
+            </div>
+            <IssueList issues={issues} />
+          </Panel>
+
+          <Panel>
             <h2 className="font-display">Runs</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {runs.map((r) => (
@@ -212,6 +247,8 @@ export default async function ArticleDetailPage({
               ) : null}
             </ul>
           </Panel>
+
+          <ActivityPanel refId={article.id} />
         </div>
       </div>
     </AppShell>

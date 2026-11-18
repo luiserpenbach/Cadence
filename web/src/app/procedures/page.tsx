@@ -37,7 +37,7 @@ export default function ProceduresPage() {
             {[...byKey.entries()].map(([key, versions]) => {
               const latest = versions[versions.length - 1];
               return (
-                <div key={key} className="rounded-none bg-[var(--panel-strong)] p-4">
+                <div key={key} className="rounded-md bg-[var(--panel-strong)] p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs text-[var(--muted)]">
                       {key}
